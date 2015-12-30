@@ -11,7 +11,9 @@
 	</head>
 	<body>
 	
-    <div id="map"></div>
+    <div id="info-box" style="width: 100px"></div>
+	<div id="map"></div>
+	
 		<script type="text/javascript">
 			var map;
 			function initMap() {
@@ -29,6 +31,22 @@
 				map = new google.maps.Map(document.getElementById("map"), mapOptions);
 				var transitLayer = new google.maps.TransitLayer();
 				transitLayer.setMap(map);
+				map.data.loadGeoJson('https://storage.googleapis.com/maps-devrel/google.json');
+				map.data.setStyle(function(feature) {
+					var ascii = feature.getProperty('ascii');
+					var color = ascii > 91 ? 'red' : 'blue';
+					return {
+						clickable: true,
+						visible: true,
+						fillColor: color,
+						strokeWeight: 1
+					};
+				});
+				
+				map.data.addListener('mouseover', function(event) {
+					document.getElementById('info-box').textContent =
+					event.feature.getProperty('letter');
+				});
 				
 				/*
 				map.mapTypes.set('M_M&S', new google.maps.ImageMapType({
