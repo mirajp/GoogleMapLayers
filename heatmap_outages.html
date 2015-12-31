@@ -104,23 +104,45 @@
 			// Heatmap data: 500 Points
 			function getPoints() {
 				var inputLatLongs = [], mapCoordindates = [];
-				$.get("./rawlatlongs.txt", function(data, inputLatLongs) {
-					console.log(data);
-					alert("Data loaded: " + data);
-					//var dataText = data.text();
-					inputLatLongs = data.split('\n');
-					for (var i = 0; i < inputLatLongs.length; i++) {
-						inputLatLongs[i] = inputLatLongs[i].split(",");
-						mapCoordindates.push(new google.maps.LatLng(inputLatLongs[i][0], inputLatLongs[i][1]));
-					}
-					console.log(mapCoordindates);
-					//return mapCoordindates;
-				});
-				return [
-				new google.maps.LatLng(40.70429387,-74.01323653),
-				new google.maps.LatLng(40.73528845,-74.00054125),
-				new google.maps.LatLng(40.81281227,-73.95311252),
-				];
+				var rawFile = new XMLHttpRequest();
+				rawFile.open("GET", "rawlatlongs.txt", true);
+				rawFile.onreadystatechange = function ()
+				{
+				    if(rawFile.readyState === 4)
+				    {
+				        if(rawFile.status === 200 || rawFile.status == 0)
+				        {
+				            var allText = rawFile.responseText;
+				            inputLatLongs = allText.split('\n');
+				            //alert(allText);
+				            for (var i = 0; i < inputLatLongs.length; i++) {
+						 		inputLatLongs[i] = inputLatLongs[i].split(",");
+						 		mapCoordindates.push(new google.maps.LatLng(inputLatLongs[i][0], inputLatLongs[i][1]));
+						 	}
+				        }
+				    }
+				}
+				rawFile.send(null);
+				//$.get("rawlatlongs.txt", function(data, inputLatLongs) {
+				// 	console.log(data);
+				// 	alert("Data loaded: " + data);
+				// 	//var dataText = data.text();
+				// 	inputLatLongs = data.split('\n');
+				// 	for (var i = 0; i < inputLatLongs.length; i++) {
+				// 		inputLatLongs[i] = inputLatLongs[i].split(",");
+				// 		mapCoordindates.push(new google.maps.LatLng(inputLatLongs[i][0], inputLatLongs[i][1]));
+				// 	}
+				// 	console.log(mapCoordindates);
+				// 	//return mapCoordindates;
+				// }, dataType='text');
+				
+				return mapCoordindates;
+
+				//return [
+				//	new google.maps.LatLng(40.70429387,-74.01323653),
+				//	new google.maps.LatLng(40.73528845,-74.00054125),
+				//	new google.maps.LatLng(40.81281227,-73.95311252),
+				//];
 			}
 		</script>
 		<script async defer
