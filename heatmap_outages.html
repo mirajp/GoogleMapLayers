@@ -114,7 +114,6 @@
 				        {
 				            var allText = rawFile.responseText;
 				            inputLatLongs = allText.split('\n');
-				            //alert(allText);
 				            for (var i = 0; i < inputLatLongs.length; i++) {
 						 		inputLatLongs[i] = inputLatLongs[i].split(",");
 						 		mapCoordindates.push(new google.maps.LatLng(inputLatLongs[i][0], inputLatLongs[i][1]));
@@ -123,21 +122,7 @@
 				    }
 				}
 				rawFile.send(null);
-				//$.get("rawlatlongs.txt", function(data, inputLatLongs) {
-				// 	console.log(data);
-				// 	alert("Data loaded: " + data);
-				// 	//var dataText = data.text();
-				// 	inputLatLongs = data.split('\n');
-				// 	for (var i = 0; i < inputLatLongs.length; i++) {
-				// 		inputLatLongs[i] = inputLatLongs[i].split(",");
-				// 		mapCoordindates.push(new google.maps.LatLng(inputLatLongs[i][0], inputLatLongs[i][1]));
-				// 	}
-				// 	console.log(mapCoordindates);
-				// 	//return mapCoordindates;
-				// }, dataType='text');
-				
 				return mapCoordindates;
-
 				//return [
 				//	new google.maps.LatLng(40.70429387,-74.01323653),
 				//	new google.maps.LatLng(40.73528845,-74.00054125),
