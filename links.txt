@@ -1,0 +1,6 @@
+http://ssaweb/somnis/Map/
+http://ssaweb/SeamlessMSPlates/
+
+https://developers.google.com/maps/documentation/javascript/maptypes
+https://developers.google.com/maps/documentation/javascript/datalayer
+https://developers.google.com/maps/documentation/javascript/fusiontableslayer

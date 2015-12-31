@@ -4,6 +4,15 @@
 		<style type="text/css">
 			html, body { height: 100%; margin: 0; padding: 0; }
 			#map { height: 100%; }
+			#info-box {
+				background-color: white;
+				border: 1px solid black;
+				bottom: 30px;
+				height: 20px;
+				padding: 10px;
+				position: absolute;
+				left: 30px;
+			}
 		</style>
 		<script type="text/javascript"
 			src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCJX8q3ThLljfIou6UPxhiIDlaSYw6plbs&libraries=visualization&sensor=true_or_false">
@@ -11,8 +20,8 @@
 	</head>
 	<body>
 	
-    <div id="info-box" style="width: 100px"></div>
-	<div id="map"></div>
+    <div id="map"></div>
+	<div id="info-box">?</div>
 	
 		<script type="text/javascript">
 			var map;
