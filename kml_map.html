@@ -24,54 +24,56 @@
         width: 19%;
       }
     </style>
-	<script language="javascript" src="https://maps.googleapis.com/maps/api/js?sensor=false&v=3"></script>
+	<!-- <script language="javascript" src="https://maps.googleapis.com/maps/api/js?sensor=false&v=3"></script> -->
 	<script src="lib/geoxml3.js"></script>
-	<script src="lib/ProjectedOverlay.js"></script>
   </head>
   <body>
     <div id="map"></div>
     <div id="content-window"></div>
     <script>
+	var map, myParser;
+	function initMap() {
+		map = new google.maps.Map(document.getElementById('map'), {
+			zoom: 12,
+			center: new google.maps.LatLng(40.782361, -73.965784),
+			mapTypeId: google.maps.MapTypeId.ROADMAP
+		});
+		
+		myParser = new geoXML3.parser({
+			map: map,
+			zoom: true,
+			preserveViewport: true,
+			suppressInfoWindows: false,
+			singleInfoWindow: true
+		});
+		
+		myParser.parse("./data/samplekml.kml");
+		
+	  /*
+	  var kmlLayer = new google.maps.KmlLayer({
+		url: "./ExcelData/placemark.kml",
+		suppressInfoWindows: true,
+		map: map
+	  });
 
-function initMap() {
-  var map = new google.maps.Map(document.getElementById('map'), {
-		zoom: 12,
-		center: {lat: 40.782361, lng: -73.965784}
-	});
-
-	var myKmlOptions = {
-        preserveViewport: true,
-        suppressInfoWindows: false
-    };
-	
-	var myParser = new geoXML3.parser({map: map});
-	myParser.parse('ExcelData/samplekml.kml');
-  
-  /*
-  var kmlLayer = new google.maps.KmlLayer({
-    url: "./ExcelData/placemark.kml",
-    suppressInfoWindows: true,
-    map: map
-  });
-
-  kmlLayer.addListener('click', function(kmlEvent) {
-    var text = kmlEvent.featureData.description;
-    showInContentWindow(text);
-  });
-*/
-/*
-  function showInContentWindow(text) {
-    var sidediv = document.getElementById('content-window');
-    sidediv.innerHTML = text;
-  }
-  */
-}
-google.maps.event.addDomListener(window, 'load', initMap);
+	  kmlLayer.addListener('click', function(kmlEvent) {
+		var text = kmlEvent.featureData.description;
+		showInContentWindow(text);
+	  });
+		*/
+		/*
+		function showInContentWindow(text) {
+		var sidediv = document.getElementById('content-window');
+		sidediv.innerHTML = text;
+		}
+		*/
+	}
+		//google.maps.event.addDomListener(window, 'load', initMap);
     </script>
-	<!-- 
+	 
     <script async defer
         src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCJX8q3ThLljfIou6UPxhiIDlaSYw6plbs&signed_in=true&libraries=visualization&callback=initMap">
     </script>
-	-->
+	
   </body>
 </html>

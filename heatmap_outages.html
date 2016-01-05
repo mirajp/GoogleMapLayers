@@ -27,6 +27,7 @@
 			}
 		</style>
 		<script src="lib/jquery-1.11.3.js"></script>
+		<script src="https://maps.googleapis.com/maps/api/js?v=3.exp&sensor=false"></script>
 		<!-- <script src="http://maps.google.com/maps?file=api&amp;v=2&amp;key=ABQIAAAAcktFen-Z7CQCe0dxIKmxeRReUzuwBhfUVuhk2aRjVRv1avb-hhQdlkzQnQ1P5PComj1CZx2jeOOyIw" type="text/javascript"></script> -->
 	</head>
 
@@ -44,12 +45,12 @@
 		<div id="map"></div>
 		<script>
 			var map, heatmap, gradientNumber = 0;
-			var myCenterLatLong = new google.maps.LatLng(40.782361, -73.965784);
+			var myCenterLatLong = new google.maps.LatLng({lat: 40.782361, lng: -73.965784});
 			
 			function createFrame() {
 				console.log("Creating iframe");
 				$(document.body).append('<IFRAME id="dataFile" style="display: none;">');
-				$('iframe#dataFile').attr('src', "rawlatlongs.html");
+				$('iframe#dataFile').attr('src', "./data/rawlatlongs.html");
 				$('iframe#dataFile').load(function() {
 					console.log("Iframe created");
 					initMap();
@@ -69,7 +70,7 @@
 				console.log("Inside initMap");
 				var mapOptions = {
 					backgroundColor: '#000000',
-					center: myCenterLatLong,
+					center: {lat: 40.782361, lng: -73.965784},
 					mapTypeId: google.maps.MapTypeId.ROADMAP,
 					//mapTypeControlOptions: [google.maps.MapTypeId.ROADMAP, 'M_M&S'],
 					//mapTypeControlOptions: [google.maps.MapTypeId.ROADMAP, google.maps.MapTypeId.SATELLITE],
@@ -85,11 +86,9 @@
 					map: map
 				});
 			}
-
 			function toggleHeatmap() {
 				heatmap.setMap(heatmap.getMap() ? null : map);
 			}
-
 			function changeGradient() {
 				var gradient;
 				if (gradientNumber == 3) {
@@ -148,7 +147,6 @@
 					heatmap.set('gradient', gradient);
 				}
 			}
-
 			function changeRadius() {
 				var newRadius = heatmap.get('radius');
 				if (newRadius == null)
@@ -160,7 +158,6 @@
 				}
 				heatmap.set('radius', newRadius);
 			}
-
 			function changeOpacity() {
 				var newOpacity = heatmap.get('opacity');
 				if (newOpacity == null)
