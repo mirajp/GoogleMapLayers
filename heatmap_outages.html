@@ -27,6 +27,7 @@
 			}
 		</style>
 		<script src="./jquery-1.11.3.js"></script>
+		<!-- <script src="http://maps.google.com/maps?file=api&amp;v=2&amp;key=ABQIAAAAcktFen-Z7CQCe0dxIKmxeRReUzuwBhfUVuhk2aRjVRv1avb-hhQdlkzQnQ1P5PComj1CZx2jeOOyIw" type="text/javascript"></script> -->
 	</head>
 
 	<body>
@@ -43,6 +44,7 @@
 		<div id="map"></div>
 		<script>
 			var map, heatmap, gradientNumber = 0;
+			var myCenterLatLong = new google.maps.LatLng(40.782361, -73.965784);
 			
 			function createFrame() {
 				console.log("Creating iframe");
@@ -65,13 +67,13 @@
 			
 			function initMap() {
 				console.log("Inside initMap");
-				var myLatLong = new google.maps.LatLng(40.782361, -73.965784);
 				var mapOptions = {
 					backgroundColor: '#000000',
-					center: myLatLong,
+					center: myCenterLatLong,
 					mapTypeId: google.maps.MapTypeId.ROADMAP,
 					//mapTypeControlOptions: [google.maps.MapTypeId.ROADMAP, 'M_M&S'],
-					mapTypeControlOptions: [google.maps.MapTypeId.ROADMAP, google.maps.MapTypeId.SATELLITE],
+					//mapTypeControlOptions: [google.maps.MapTypeId.ROADMAP, google.maps.MapTypeId.SATELLITE],
+					mapTypeControlOptions: [google.maps.MapTypeId.ROADMAP],
 					streetViewControl: false,
 					zoom: 13
 				};
