@@ -42,7 +42,7 @@
 		
 		<div id="map"></div>
 		<script>
-			var map, heatmap;
+			var map, heatmap, gradientNumber = 0;
 			
 			function createFrame() {
 				console.log("Creating iframe");
@@ -89,23 +89,62 @@
 			}
 
 			function changeGradient() {
-				var gradient = [
-					'rgba(0, 255, 255, 0)',
-					'rgba(0, 255, 255, 1)',
-					'rgba(0, 191, 255, 1)',
-					'rgba(0, 127, 255, 1)',
-					'rgba(0, 63, 255, 1)',
-					'rgba(0, 0, 255, 1)',
-					'rgba(0, 0, 223, 1)',
-					'rgba(0, 0, 191, 1)',
-					'rgba(0, 0, 159, 1)',
-					'rgba(0, 0, 127, 1)',
-					'rgba(63, 0, 91, 1)',
-					'rgba(127, 0, 63, 1)',
-					'rgba(191, 0, 31, 1)',
-					'rgba(255, 0, 0, 1)'
-				]
-				heatmap.set('gradient', heatmap.get('gradient') ? null : gradient);
+				var gradient;
+				if (gradientNumber == 3) {
+					gradientNumber = 0;
+					heatmap.set('gradient', null);
+				}
+				else if (gradientNumber == 0) {
+					gradient = [
+						'rgba(0, 255, 255, 0)',
+						'rgba(0, 255, 255, 1)',
+						'rgba(0, 191, 255, 1)',
+						'rgba(0, 127, 255, 1)',
+						'rgba(0, 63, 255, 1)',
+						'rgba(0, 0, 255, 1)',
+						'rgba(0, 0, 223, 1)',
+						'rgba(0, 0, 191, 1)',
+						'rgba(0, 0, 159, 1)',
+						'rgba(0, 0, 127, 1)',
+						'rgba(63, 0, 91, 1)',
+						'rgba(127, 0, 63, 1)',
+						'rgba(191, 0, 31, 1)',
+						'rgba(255, 0, 0, 1)'
+					];
+					gradientNumber++;
+				}
+				else if (gradientNumber == 1) {
+					gradient = [
+						'rgba(255, 0, 0, 0)',
+						'rgba(255, 255, 0, 0.9)',
+						'rgba(0, 255, 0, 0.7)',
+						'rgba(173, 255, 47, 0.5)',
+						'rgba(152, 251, 152, 0)',
+						'rgba(152, 251, 152, 0)',
+						'rgba(0, 0, 238, 0.5)',
+						'rgba(186, 85, 211, 0.7)',
+						'rgba(255, 0, 255, 0.9)',
+						'rgba(255, 0, 0, 1)'
+					];
+					gradientNumber++;
+				}
+				else if (gradientNumber = 2) {
+					gradient = [
+						'rgba(255, 0, 0, 0)',
+						'rgba(0, 242, 255, 0.9)',
+						'rgba(113, 235, 194, 0.9)',
+						'rgba(145, 250, 107, 0.9)',
+						'rgba(0, 186, 25, 0.9)',
+						'rgba(245, 255, 56, 0.9)',
+						'rgba(255, 196, 0, 0.9)',
+						'rgba(255, 149, 0, 0.9)',
+						'rgba(255, 0, 0, 1)'
+					];
+					gradientNumber++;
+				}
+				if (gradientNumber > 0) {
+					heatmap.set('gradient', gradient);
+				}
 			}
 
 			function changeRadius() {
@@ -117,69 +156,48 @@
 				if (newRadius > 15) {
 					newRadius = 0;
 				}
-				//heatmap.set('radius', heatmap.get('radius') ? null : 20);
 				heatmap.set('radius', newRadius);
 			}
 
 			function changeOpacity() {
-				heatmap.set('opacity', heatmap.get('opacity') ? null : 0.2);
+				var newOpacity = heatmap.get('opacity');
+				if (newOpacity == null)
+					newOpacity = 1;
+				
+				newOpacity -= 0.25;
+				
+				if (newOpacity < 0.3)
+					newOpacity = 1;
+					
+				heatmap.set('opacity', newOpacity);
 			}
-
-			// Heatmap data: 500 Points
+			
 			function getPoints() {
 				console.log("Inside getPoints()");
 				var inputLatLongs = [], mapCoordindates = [];
-				/*
-				var rawFile = new XMLHttpRequest();
-				rawFile.open("GET", "./rawlatlongs.txt?application/text", false);
-				rawFile.onreadystatechange = function ()
-				{
-				    if(rawFile.readyState === 4)
-				    {
-				        if((rawFile.status >= 200 && rawFile.status < 300) || rawFile.status === 0)
-				        {
-				            var allText = rawFile.responseText;
-				            inputLatLongs = allText.split('\n');
-				            for (var i = 0; i < inputLatLongs.length; i++) {
-						 		inputLatLongs[i] = inputLatLongs[i].split(",");
-						 		mapCoordindates.push(new google.maps.LatLng(inputLatLongs[i][0], inputLatLongs[i][1]));
-						 	}
-				        }
-				    }
-				}
-				rawFile.send(null);
-				*/
 				var iFrame =  document.getElementById('dataFile');
 				
-				//iFrame.onload = function() {
-					//console.log("Inside iFrame.onload function");
-					var iFrameBody;
-					if ( iFrame.contentDocument ) {
-						// FF
-						iFrameBody = iFrame.contentDocument.getElementsByTagName('body')[0];
-					}
-					else if ( iFrame.contentWindow ) {
-						// IE
-						iFrameBody = iFrame.contentWindow.document.getElementsByTagName('body')[0];
-					}
-					if (iFrameBody == undefined) {
-						console.log("iFrameBody still undefined");
-					}
-					
-					console.log("Done looking for file contents in getPoints()");
-					inputLatLongs = iFrameBody.innerHTML.split('\n');
-					for (var i = 0; i < inputLatLongs.length; i++) {
-						inputLatLongs[i] = inputLatLongs[i].split(",");
-						mapCoordindates.push(new google.maps.LatLng(inputLatLongs[i][0], inputLatLongs[i][1]));
-					}
-				//}
+				var iFrameBody;
+				if ( iFrame.contentDocument ) {
+					// FF
+					iFrameBody = iFrame.contentDocument.getElementsByTagName('body')[0];
+				}
+				else if ( iFrame.contentWindow ) {
+					// IE
+					iFrameBody = iFrame.contentWindow.document.getElementsByTagName('body')[0];
+				}
+				if (iFrameBody == undefined) {
+					console.log("iFrameBody still undefined");
+				}
 				
+				console.log("Done looking for file contents in getPoints()");
+				inputLatLongs = iFrameBody.innerHTML.split('\n');
+				for (var i = 0; i < inputLatLongs.length; i++) {
+					inputLatLongs[i] = inputLatLongs[i].split(",");
+					mapCoordindates.push(new google.maps.LatLng(inputLatLongs[i][0], inputLatLongs[i][1]));
+				}
+			
 				return mapCoordindates;
-				//return [
-				//	new google.maps.LatLng(40.70429387,-74.01323653),
-				//	new google.maps.LatLng(40.73528845,-74.00054125),
-				//	new google.maps.LatLng(40.81281227,-73.95311252),
-				//];
 			}
 			
 		</script>
