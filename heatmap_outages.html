@@ -45,6 +45,7 @@
 		<div id="map"></div>
 		<script>
 			var map, heatmap, gradientNumber = 0;
+			var transitLayer = google.maps.TransitLayer();
 			var myCenterLatLong = new google.maps.LatLng({lat: 40.782361, lng: -73.965784});
 			
 			function createFrame() {
@@ -55,15 +56,6 @@
 					console.log("Iframe created");
 					initMap();
 				});
-				/*
-				var i = document.createElement("iframe");
-				i.id = "dataFile";
-				i.src = "rawlatlongs.html";
-				i.scrolling = "auto"
-				i.style.display = "none";
-				document.body.appendChild(i);
-				initMap();
-				*/
 			}
 			
 			function initMap() {
@@ -88,6 +80,7 @@
 			}
 			function toggleHeatmap() {
 				heatmap.setMap(heatmap.getMap() ? null : map);
+				transitLayer.setMap(map);
 			}
 			function changeGradient() {
 				var gradient;
