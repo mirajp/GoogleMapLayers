@@ -55,6 +55,7 @@
 			});
 			
 			function loadData() {
+				console.log("Loading Latitude/Longitude for heatmap...");
 				var latlngCSV = 'http://localhost:8000/data/rawlatlongs.csv';
 				alasql('SELECT * FROM CSV("'+latlngCSV+'",{headers:true})', [], function(latlngData) {
 					console.log("latlong.csv shows " + latlngData.length + " outage reports.");
@@ -71,12 +72,13 @@
 			}
 			
 			function initMarkers() {
-				console.log("Creating the markers...");
+				console.log("Loading the data for the markers and infowindows...");
 				var csvUrl = 'http://localhost:8000/data/pscdata.csv';
 				alasql('SELECT * FROM CSV("'+csvUrl+'",{headers:true})', [], function(data){
 					console.log("pscdata.csv shows " + data.length + " outage reports.");
 					headers = ['ID','Address','Latitude','Longitude','Date Time From','Date Time To','Fault Location',
 									'Partial','Root Cause','Sub Cause','Ticket No','Weather','Customer Hrs','Duration','No Cust Interrupts'];
+					console.log("Creating markers...");
 					for (var i = 0; i < data.length; i++) {
 						if (data[i]['Latitude'] != "NOT FOUND") {
 							var dataAddress = data[i]['Address'];
@@ -170,7 +172,7 @@
 				//markerCluster = new MarkerClusterer(map, [], mcOptions);
 				var key;
 				var count = 0;
-				console.log("Adding markers...");
+				console.log("Adding the markers to the map...");
 				for (key in markerData) {
 					if (markerData.hasOwnProperty(key)) {
 						gmarkers.push(createMarker(key));
@@ -221,16 +223,16 @@
 			}
 			
 			function toggleMarkers() {
-				var count = 0;
 				for (var i = 0; i < gmarkers.length; i++) {
 					if (gmarkers[i].visible) {
 						gmarkers[i].setVisible(false);
-						count++;
 					}
 					else {
 						gmarkers[i].setVisible(true);
-						count++;
 					}
+				}
+				if (gmarkers[0].visible == false) {
+					infowindow.close();
 				}
 				markerCluster.repaint();
 			}
