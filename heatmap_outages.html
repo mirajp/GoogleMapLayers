@@ -27,16 +27,17 @@
 			}
 		</style>
 		<script src="lib/jquery-1.11.3.js"></script>
-		<script src="https://maps.googleapis.com/maps/api/js?v=3.exp&sensor=false"></script>
-		<!-- <script src="http://maps.google.com/maps?file=api&amp;v=2&amp;key=ABQIAAAAcktFen-Z7CQCe0dxIKmxeRReUzuwBhfUVuhk2aRjVRv1avb-hhQdlkzQnQ1P5PComj1CZx2jeOOyIw" type="text/javascript"></script> -->
+		<script src="lib/alasql.min.js"></script>
+		<script src="lib/markerclusterer.js"></script>
+		<script src="http://maps.google.com/maps/api/js?&libraries=visualization"></script>
+		<!-- <script src="http://google-maps-utility-library-v3.googlecode.com/svn/trunk/markerclustererplus/src/markerclusterer.js"></script> -->
 	</head>
 
-	<body>
-		<!-- <iframe id="dataFile" src="file://./rawlatlongs.html" onload="LoadFile();" style="display: none;"></iframe> -->
-		<!-- <iframe id="dataFile" src="rawlatlongs.html" style="display: none;"></iframe> -->
+	<body onload='loadData()'>
 		
 		<div id="floating-panel">
 			<button onclick="toggleHeatmap()">Toggle Heatmap</button>
+			<button onclick="toggleMarkers()">Toggle Markers</button>
 			<button onclick="changeGradient()">Change gradient</button>
 			<button onclick="changeRadius()">Change radius</button>
 			<button onclick="changeOpacity()">Change opacity</button>
@@ -45,19 +46,80 @@
 		<div id="map"></div>
 		<script>
 			var map, heatmap, gradientNumber = 0;
-			var transitLayer = google.maps.TransitLayer();
-			var myCenterLatLong = new google.maps.LatLng({lat: 40.782361, lng: -73.965784});
+			var markerCluster;
+			var mapCoordindates = [];
+			var gmarkers = [];
+			var markerData = {};
+			var infowindow = new google.maps.InfoWindow({
+				maxWidth: 330
+			});
 			
-			function createFrame() {
-				console.log("Creating iframe");
-				$(document.body).append('<IFRAME id="dataFile" style="display: none;">');
-				$('iframe#dataFile').attr('src', "./data/rawlatlongs.html");
-				$('iframe#dataFile').load(function() {
-					console.log("Iframe created");
-					initMap();
+			function loadData() {
+				var latlngCSV = 'http://localhost:8000/data/rawlatlongs.csv';
+				alasql('SELECT * FROM CSV("'+latlngCSV+'",{headers:true})', [], function(latlngData) {
+					console.log("latlong.csv shows " + latlngData.length + " outage reports.");
+					// Headers of the csv:
+					var headers = ['Latitude','Longitude'];
+					for (var i = 0; i < latlngData.length; i++) {
+						if (latlngData[i]['Latitude'] != "NOT FOUND") {
+							mapCoordindates.push(new google.maps.LatLng(latlngData[i]['Latitude'], latlngData[i]['Longitude']));
+						}
+					}
+					//initMap();
+					initMarkers();
 				});
 			}
 			
+			function initMarkers() {
+				console.log("Creating the markers...");
+				var csvUrl = 'http://localhost:8000/data/pscdata.csv';
+				alasql('SELECT * FROM CSV("'+csvUrl+'",{headers:true})', [], function(data){
+					console.log("pscdata.csv shows " + data.length + " outage reports.");
+					headers = ['ID','Address','Latitude','Longitude','Date Time From','Date Time To','Fault Location',
+									'Partial','Root Cause','Sub Cause','Ticket No','Weather','Customer Hrs','Duration','No Cust Interrupts'];
+					for (var i = 0; i < data.length; i++) {
+						if (data[i]['Latitude'] != "NOT FOUND") {
+							var dataAddress = data[i]['Address'];
+							// If the address is already in the markerData map, then append on values
+							if (dataAddress in markerData) {
+								var numEntries = markerData[dataAddress]['Num Entries'];
+								for (var j = 0; j < headers.length; j++) {
+									var headerName = headers[j];
+									if (headerName != 'Address' && headerName != 'Latitude' && headerName != 'Longitude' && headerName != 'ID') {
+										var strLength = Number(('' + markerData[dataAddress][headerName] + '').length + headerName.length);
+										var numExtra = parseFloat(numEntries)-1;
+										var extraLength = Number(numExtra*32);
+										var expectedLength = extraLength + 45;
+										var padAmount = expectedLength - strLength;
+										for (var p = 0; p < padAmount; p++) {
+											markerData[dataAddress][headerName] += ",";
+										}
+									}
+								}
+								numEntries++;
+								markerData[dataAddress]['Num Entries'] = numEntries;
+								
+								for (var j = 0; j < headers.length; j++) {
+									var headerName = headers[j];
+									if (headerName != 'Address' && headerName != 'Latitude' && headerName != 'Longitude' && headerName != 'ID') {
+										markerData[dataAddress][headerName] += '' + data[i][headerName];
+									}
+								}
+							}
+							else {
+								markerData[dataAddress] = {};
+								for (var j = 0; j < headers.length; j++) {
+									var headerName = headers[j];
+									markerData[dataAddress][headerName] = data[i][headerName];
+								}
+								markerData[dataAddress]['Num Entries'] = 1;
+							}
+						}
+					}
+					initMap();
+				});
+			}
+			/*
 			function initMap() {
 				console.log("Inside initMap");
 				var mapOptions = {
@@ -73,15 +135,106 @@
 				map = new google.maps.Map(document.getElementById("map"), mapOptions);
 				
 				heatmap = new google.maps.visualization.HeatmapLayer({
-					data: getPoints(),
+					data: mapCoordindates,
 					maxIntensity: 10,
 					map: map
 				});
 			}
+			*/
+			
+			function initMap() {
+				console.log("Creating the map...");
+				var myCenter = new google.maps.LatLng({lat: 40.782361, lng: -73.965784});
+				var mapOptions = {
+					zoom: 13, 
+					center: myCenter,
+					mapTypeId: google.maps.MapTypeId.ROADMAP
+				};
+				map = new google.maps.Map(document.getElementById('map'), mapOptions); 
+
+				heatmap = new google.maps.visualization.HeatmapLayer({
+					data: mapCoordindates,
+					maxIntensity: 10,
+					map: map
+				});
+				
+				//marker cluster option
+				var mcOptions = {
+					gridSize: 25,
+					maxZoom: 18,
+					ignoreHidden: true,
+					minimumClusterSize: 3
+				};
+				
+				// Delaying marker cluster creation until after all the markers have been created
+				//markerCluster = new MarkerClusterer(map, [], mcOptions);
+				var key;
+				var count = 0;
+				console.log("Adding markers...");
+				for (key in markerData) {
+					if (markerData.hasOwnProperty(key)) {
+						gmarkers.push(createMarker(key));
+						count++;
+					}
+				}
+				
+				markerCluster = new MarkerClusterer(map, gmarkers, mcOptions);
+				console.log("Done: Added " + count + " markers.");
+			}
+			
+			function createMarker(index) {
+				var latlng = new google.maps.LatLng(parseFloat(markerData[index]['Latitude']),parseFloat(markerData[index]['Longitude']));
+				var number;
+				if (markerData[index]["Num Entries"] >= 9) {
+					number = 9;
+				}
+				else {
+					number = markerData[index]["Num Entries"];
+				}
+				var marker = new google.maps.Marker({
+					position: latlng,
+					map: map,
+					icon: "http://localhost:8000/markers/" + number + ".png",
+					title: markerData[index]['Address']
+				});
+				
+				google.maps.event.addListener(marker, 'click', function() {
+					infowindow.close();
+					
+					var text = "<font face='courier'><b>" + markerData[index]['Address'] + " - (" +  markerData[index]['Num Entries'] + ")</b><pre>";
+					for (var headerIter = 4; headerIter < headers.length; headerIter++) {
+						var headerName = headers[headerIter];
+						text +=  "<b>" + headerName + "</b>: " + ('' + markerData[index][headerName] + '').replace(/,/g, '&nbsp;') + "<br>";
+					}
+					text += "</font></pre>";
+					infowindow.setContent(text);
+					infowindow.open(map,marker);
+				});
+				
+				// Delaying marker cluster creation until after all the markers have been created
+				//markerCluster.addMarker(marker);
+				return marker;
+			}
+			
 			function toggleHeatmap() {
 				heatmap.setMap(heatmap.getMap() ? null : map);
-				transitLayer.setMap(map);
 			}
+			
+			function toggleMarkers() {
+				var count = 0;
+				for (var i = 0; i < gmarkers.length; i++) {
+					if (gmarkers[i].visible) {
+						gmarkers[i].setVisible(false);
+						count++;
+					}
+					else {
+						gmarkers[i].setVisible(true);
+						count++;
+					}
+				}
+				markerCluster.repaint();
+			}
+			
 			function changeGradient() {
 				var gradient;
 				if (gradientNumber == 3) {
@@ -143,11 +296,11 @@
 			function changeRadius() {
 				var newRadius = heatmap.get('radius');
 				if (newRadius == null)
-					newRadius = 0;
+					newRadius = 5;
 				newRadius += 5;
 				
-				if (newRadius > 15) {
-					newRadius = 0;
+				if (newRadius > 20) {
+					newRadius = 5;
 				}
 				heatmap.set('radius', newRadius);
 			}
@@ -163,38 +316,6 @@
 					
 				heatmap.set('opacity', newOpacity);
 			}
-			
-			function getPoints() {
-				console.log("Inside getPoints()");
-				var inputLatLongs = [], mapCoordindates = [];
-				var iFrame =  document.getElementById('dataFile');
-				
-				var iFrameBody;
-				if ( iFrame.contentDocument ) {
-					// FF
-					iFrameBody = iFrame.contentDocument.getElementsByTagName('body')[0];
-				}
-				else if ( iFrame.contentWindow ) {
-					// IE
-					iFrameBody = iFrame.contentWindow.document.getElementsByTagName('body')[0];
-				}
-				if (iFrameBody == undefined) {
-					console.log("iFrameBody still undefined");
-				}
-				
-				console.log("Done looking for file contents in getPoints()");
-				inputLatLongs = iFrameBody.innerHTML.split('\n');
-				for (var i = 0; i < inputLatLongs.length; i++) {
-					inputLatLongs[i] = inputLatLongs[i].split(",");
-					mapCoordindates.push(new google.maps.LatLng(inputLatLongs[i][0], inputLatLongs[i][1]));
-				}
-			
-				return mapCoordindates;
-			}
-			
-		</script>
-		<script 
-			src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCJX8q3ThLljfIou6UPxhiIDlaSYw6plbs&signed_in=true&libraries=visualization&callback=createFrame">
 		</script>
 	</body>
 </html>

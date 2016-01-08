@@ -27,8 +27,6 @@
 				maxWidth: 330
 			});
 			
-			//var csvUrl = 'https://cdn.rawgit.com/albertyw/avenews/master/old/data/average-latitude-longitude-countries.csv';
-			
 			function initMarkers() {
 				console.log("Creating the markers...");
 				var csvUrl = 'http://localhost:8000/data/pscdata.csv';
@@ -82,15 +80,6 @@
 							}
 						}
 					}
-					
-					//console.log("Address of first object: " + data[0]["Address"]);
-					//console.log("Weather of first object: " + data[0]["Weather"]);
-					//console.log("Latitude of first object: " + data[0]["Latitude"]);
-					//console.log("Longitude of first object: " + data[0]["Longitude"]);
-					
-					//var mySize = Object.size(markerData);
-					//console.log("Length of marker data = " + mySize);
-					//console.log(markerData['313 E 73 ST']['Num Entries']); // 8
 					initialize();
 				});
 			}
