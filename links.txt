@@ -4,3 +4,15 @@ http://ssaweb/SeamlessMSPlates/
 https://developers.google.com/maps/documentation/javascript/maptypes
 https://developers.google.com/maps/documentation/javascript/datalayer
 https://developers.google.com/maps/documentation/javascript/fusiontableslayer
+
+
+GET /SeamlessMSPlates/images/m/e_m_and_s/normal/12/148/61.png HTTP/1.1
+Host: ssaweb
+Connection: keep-alive
+Accept: image/webp,image/*,*/*;q=0.8
+User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/47.0.2526.106 Safari/537.36
+Referer: http://ssaweb/SeamlessMSPlates/
+Accept-Encoding: gzip, deflate, sdch
+Accept-Language: en-US,en;q=0.8
+Cookie: selected_maptypeid=m_e; m_e_lat=84.70469185173619; m_e_lng=-167.01227188110352; selected_zoom=12; ASP.NET_SessionId=zygs1gcvfwuriifefeqbdugy
+
