@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<style type="text/css">
+			html, body { height: 100%; margin: 0; padding: 0; }
+			#map { height: 100%; }
+		</style>
+		<script src="http://maps.google.com/maps/api/js?&libraries=visualization"></script>
+	</head>
+	<body onload="initMap()">
+	
+    <div id="map"></div>
+	
+		<script type="text/javascript">
+			var map;
+			
+			function getNormalizedCoord(coord, zoom) {
+				var y = coord.y;
+				var x = coord.x;
+				
+				var multiplier = Math.pow(2, zoom - 16);
+				x -= (18728*multiplier);
+				y -= (29075*multiplier);
+
+				return {
+					x: x,
+					y: y
+				};
+			}
+			
+			function initMap() {
+				//var myLatLong = new google.maps.LatLng(41.43852198660014, -154.8358154296875);
+				var myLatLong = new google.maps.LatLng(40.725647, -73.976494);
+				
+				///* Changing default zoom
+				var mapOptions = {
+					backgroundColor: '#000000',
+					center: myLatLong,
+					mapTypeId: 'M&S',
+					//mapTypeControlOptions: [google.maps.MapTypeId.ROADMAP, 'M_M&S'],
+					mapTypeControlOptions: {
+						mapTypeIds: [google.maps.MapTypeId.ROADMAP, 'M&S']
+					},
+					streetViewControl: false,
+					zoom: 7+9
+				};
+				map = new google.maps.Map(document.getElementById("map"), mapOptions);
+				map.mapTypes.set('M&S', new google.maps.ImageMapType({
+					getTileUrl: function (coord, zoom) {
+						//var normalizedCoord = getNormalizedCoord(coord, zoom-6);
+						var normalizedCoord = getNormalizedCoord(coord, zoom);
+						if (!normalizedCoord) { return null; }
+						var multiplier = Math.pow(2, zoom - 16);
+						var myX = normalizedCoord.x-(564*multiplier);
+						var myY = normalizedCoord.y-(4056*multiplier);
+						console.log("X: " + myX + ", Y: " + myY + ", Z: " + (zoom - 9));
+						return "./images/m/e_m_and_s/" + ((zoom-9) <= 9 ? "labeled" : "normal") + "/" + (zoom-9) + "/" + myX + "/" + myY + ".png";
+					},
+					tileSize: new google.maps.Size(256, 190),
+					maxZoom: 12+9,
+					minZoom: 7+9,
+					name: "M&S"
+				}));
+				//*/
+				
+				/* Default
+				var mapOptions = {
+					backgroundColor: '#000000',
+					center: myLatLong,
+					mapTypeId: 'M&S',
+					//mapTypeControlOptions: [google.maps.MapTypeId.ROADMAP, 'M_M&S'],
+					mapTypeControlOptions: {
+						mapTypeIds: [google.maps.MapTypeId.ROADMAP, 'M&S']
+					},
+					streetViewControl: false,
+					zoom: 7
+				};
+				map = new google.maps.Map(document.getElementById("map"), mapOptions);
+				map.mapTypes.set('M&S', new google.maps.ImageMapType({
+					getTileUrl: function (coord, zoom) {
+						var normalizedCoord = getNormalizedCoord(coord, zoom);
+						console.log("X: " + normalizedCoord.x + ", Y: " + normalizedCoord.y);
+						if (!normalizedCoord) { return null; }
+						return "./images/m/e_m_and_s/" + (zoom <= 9 ? "labeled" : "normal") + "/" + zoom + "/" + normalizedCoord.x + "/" + normalizedCoord.y + ".png";
+					},
+					name: "M",
+					maxZoom: 12,
+					minZoom: 7,
+					tileSize: new google.maps.Size(256, 190)
+				}));
+				*/
+			}
+		</script>
+	</body>
+</html>

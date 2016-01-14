@@ -10,16 +10,27 @@
 				padding: 0;
 			}
 			#map {
-				height: 100%;
+				height: 80%;
+				z-index: 1;
 			}
 			#floating-panel {
 				position: absolute;
 				top: 10px;
 				left: 25%;
-				z-index: 5;
+				z-index: 2;
 				background-color: #fff;
 				padding: 5px;
 				border: 1px solid #999;
+				text-align: center;
+				font-family: 'Roboto','sans-serif';
+				line-height: 30px;
+				padding-left: 10px;
+			}
+			#query-panel {
+				position: absolute;
+				z-index: 2;
+				background-color: #fff;
+				padding: 5px;
 				text-align: center;
 				font-family: 'Roboto','sans-serif';
 				line-height: 30px;
@@ -39,6 +50,7 @@
 				white-space: nowrap;
 			}
 		</style>
+		
 		<script src="http://maps.google.com/maps/api/js?&libraries=visualization"></script>
 		<script src="lib/jquery-1.11.3.js"></script>
 		<script src="lib/alasql.min.js"></script>
@@ -56,6 +68,12 @@
 		</div>
 		
 		<div id="map"></div>
+		
+		<div id="query-panel">
+			<label for="switch">Flip Toggle Switch:</label>
+			<input type="checkbox" data-role="flipswitch" name="switch" id="switch">
+		</div>
+		
 		<script>
 			var map, heatmap, numNetworks = 0;
 			var networkPolygons = {};
@@ -80,20 +98,7 @@
 				map = new google.maps.Map(document.getElementById('map'), mapOptions); 
 				
 				drawBoundaries();
-				
-				console.log("Loading Latitude/Longitude for heatmap...");
-				var latlngCSV = 'http://localhost:8000/data/rawlatlongs.csv';
-				alasql('SELECT * FROM CSV("'+latlngCSV+'",{headers:true})', [], function(latlngData) {
-					console.log("latlong.csv shows " + latlngData.length + " outage reports.");
-					// Headers of the csv:
-					var headers = ['Latitude','Longitude'];
-					for (var i = 0; i < latlngData.length; i++) {
-						if (latlngData[i]['Latitude'] != "NOT FOUND") {
-							heatmapCoords.push(new google.maps.LatLng(latlngData[i]['Latitude'], latlngData[i]['Longitude']));
-						}
-					}
-					initMarkers();
-				});
+				initMarkers();
 			}
 			
 			function drawBoundaries() {
@@ -116,7 +121,7 @@
 					var coords = placemark.getElementsByTagName("coordinates");
 					var coordsStrs = (coords[0].childNodes[0].nodeValue).split("\n");
 					
-					for (var j = 0; j < coordsStrs.length; j++) {						
+					for (var j = 0; j < coordsStrs.length; j++) {				
 						var vals = (coordsStrs[j].trim()).split(",");
 						if (vals.length == 2)
 							networkCoordinates.push(new google.maps.LatLng(parseFloat(vals[1]), parseFloat(vals[0])));
@@ -147,6 +152,8 @@
 					for (var i = 0; i < data.length; i++) {
 						if (data[i]['Latitude'] != "NOT FOUND") {
 							var dataAddress = data[i]['Address'];
+							heatmapCoords.push(new google.maps.LatLng(data[i]['Latitude'], data[i]['Longitude']));
+							
 							// If the address is already in the markerData map, then append on values
 							if (dataAddress in markerData) {
 								var numEntries = markerData[dataAddress]['Num Entries'];
@@ -218,7 +225,7 @@
 				}
 				
 				//markerCluster = new MarkerClusterer(map, gmarkers, mcOptions);
-				console.log("Done: Added " + count + " markers.");
+				console.log("Map initialized. " + count + " markers on the map.");
 			}
 			
 			function createMarker(index) {
@@ -337,11 +344,9 @@
 					"#00ffff",
 					"#ffff00",
 					"#ff00ff",
-					"#cccccc",
 					"#cc00cc",
 					"#cccc00",
-					"#00cccc",
-					"#eeeeee"
+					"#00cccc"
 				];
 				var randColor = smpColors[Math.floor(Math.random()*smpColors.length)];
 				var poly = new google.maps.Polygon({
