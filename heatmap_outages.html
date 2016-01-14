@@ -25,12 +25,25 @@
 				line-height: 30px;
 				padding-left: 10px;
 			}
+			.labels {
+				color: blue;
+				display: block;
+				background-color: white;
+				font-family: "Lucida Grande", "Arial", sans-serif;
+				font-size: 12px;
+				font-weight: bold;
+				text-align: center;
+				width: auto;     
+				border: 1px solid black;
+				padding: 3px;
+				white-space: nowrap;
+			}
 		</style>
+		<script src="http://maps.google.com/maps/api/js?&libraries=visualization"></script>
 		<script src="lib/jquery-1.11.3.js"></script>
 		<script src="lib/alasql.min.js"></script>
 		<script src="lib/markerclusterer.js"></script>
-		<script src="http://maps.google.com/maps/api/js?&libraries=visualization"></script>
-		<!-- <script src="http://google-maps-utility-library-v3.googlecode.com/svn/trunk/markerclustererplus/src/markerclusterer.js"></script> -->
+		<script src="lib/markerwithlabel_packed.js"></script>
 	</head>
 
 	<body onload='loadData()'>
@@ -38,16 +51,16 @@
 		<div id="floating-panel">
 			<button onclick="toggleHeatmap()">Toggle Heatmap</button>
 			<button onclick="toggleMarkers()">Toggle Markers</button>
-			<button onclick="changeGradient()">Change gradient</button>
 			<button onclick="changeRadius()">Change radius</button>
 			<button onclick="changeOpacity()">Change opacity</button>
 		</div>
 		
 		<div id="map"></div>
 		<script>
-			var map, heatmap, gradientNumber = 0;
-			var markerCluster;
-			var mapCoordindates = [];
+			var map, heatmap, numNetworks = 0;
+			var networkPolygons = {};
+			var heatmapCoords = [];
+			var markerCluster = {};
 			var gmarkers = [];
 			var markerData = {};
 			var infowindow = new google.maps.InfoWindow({
@@ -55,6 +68,19 @@
 			});
 			
 			function loadData() {
+				console.log("Creating the map...");
+				var myCenter = new google.maps.LatLng({lat: 40.782361, lng: -73.965784});
+				var mapOptions = {
+					zoom: 13,
+					minZoom: 13,
+					maxZoom: 18,
+					center: myCenter,
+					mapTypeId: google.maps.MapTypeId.ROADMAP
+				};
+				map = new google.maps.Map(document.getElementById('map'), mapOptions); 
+				
+				drawBoundaries();
+				
 				console.log("Loading Latitude/Longitude for heatmap...");
 				var latlngCSV = 'http://localhost:8000/data/rawlatlongs.csv';
 				alasql('SELECT * FROM CSV("'+latlngCSV+'",{headers:true})', [], function(latlngData) {
@@ -63,12 +89,51 @@
 					var headers = ['Latitude','Longitude'];
 					for (var i = 0; i < latlngData.length; i++) {
 						if (latlngData[i]['Latitude'] != "NOT FOUND") {
-							mapCoordindates.push(new google.maps.LatLng(latlngData[i]['Latitude'], latlngData[i]['Longitude']));
+							heatmapCoords.push(new google.maps.LatLng(latlngData[i]['Latitude'], latlngData[i]['Longitude']));
 						}
 					}
-					//initMap();
 					initMarkers();
 				});
+			}
+			
+			function drawBoundaries() {
+				console.log("Drawing network boundaries...");
+				
+				var kmlPath = "http://localhost:8000/data/networks.xml";
+				var request = new XMLHttpRequest();
+				request.open("GET", kmlPath, false);
+				request.send();
+				var xml = request.responseXML;
+				var document = xml.documentElement;
+				var placemarks = document.getElementsByTagName("Placemark");
+				for(var i = 0; i < placemarks.length; i++) {
+					var networkCoordinates = [];
+					var placemark = placemarks[i];
+					
+					var names = placemark.getElementsByTagName("name");
+					var networkName = names[0].childNodes[0].nodeValue;
+					
+					var coords = placemark.getElementsByTagName("coordinates");
+					var coordsStrs = (coords[0].childNodes[0].nodeValue).split("\n");
+					
+					for (var j = 0; j < coordsStrs.length; j++) {						
+						var vals = (coordsStrs[j].trim()).split(",");
+						if (vals.length == 2)
+							networkCoordinates.push(new google.maps.LatLng(parseFloat(vals[1]), parseFloat(vals[0])));
+					}
+					
+					networkPolygons[networkName] = makePolygon(networkCoordinates, networkName);
+					
+					//marker cluster option
+					var mcOptions = {
+						gridSize: 250,
+						maxZoom: 16,
+						ignoreHidden: true,
+						minimumClusterSize: 2
+					};
+					markerCluster[networkName] = new MarkerClusterer(map, [], mcOptions);
+					numNetworks++;
+				}
 			}
 			
 			function initMarkers() {
@@ -121,45 +186,17 @@
 					initMap();
 				});
 			}
-			/*
-			function initMap() {
-				console.log("Inside initMap");
-				var mapOptions = {
-					backgroundColor: '#000000',
-					center: {lat: 40.782361, lng: -73.965784},
-					mapTypeId: google.maps.MapTypeId.ROADMAP,
-					//mapTypeControlOptions: [google.maps.MapTypeId.ROADMAP, 'M_M&S'],
-					//mapTypeControlOptions: [google.maps.MapTypeId.ROADMAP, google.maps.MapTypeId.SATELLITE],
-					mapTypeControlOptions: [google.maps.MapTypeId.ROADMAP],
-					streetViewControl: false,
-					zoom: 13
-				};
-				map = new google.maps.Map(document.getElementById("map"), mapOptions);
-				
-				heatmap = new google.maps.visualization.HeatmapLayer({
-					data: mapCoordindates,
-					maxIntensity: 10,
-					map: map
-				});
-			}
-			*/
 			
 			function initMap() {
-				console.log("Creating the map...");
-				var myCenter = new google.maps.LatLng({lat: 40.782361, lng: -73.965784});
-				var mapOptions = {
-					zoom: 13, 
-					center: myCenter,
-					mapTypeId: google.maps.MapTypeId.ROADMAP
-				};
-				map = new google.maps.Map(document.getElementById('map'), mapOptions); 
-
+				console.log("Creating the heatmap...");
 				heatmap = new google.maps.visualization.HeatmapLayer({
-					data: mapCoordindates,
+					data: heatmapCoords,
 					maxIntensity: 10,
+					opacity: 1,
 					map: map
 				});
 				
+				/*
 				//marker cluster option
 				var mcOptions = {
 					gridSize: 25,
@@ -167,8 +204,8 @@
 					ignoreHidden: true,
 					minimumClusterSize: 3
 				};
+				*/
 				
-				// Delaying marker cluster creation until after all the markers have been created
 				//markerCluster = new MarkerClusterer(map, [], mcOptions);
 				var key;
 				var count = 0;
@@ -180,7 +217,7 @@
 					}
 				}
 				
-				markerCluster = new MarkerClusterer(map, gmarkers, mcOptions);
+				//markerCluster = new MarkerClusterer(map, gmarkers, mcOptions);
 				console.log("Done: Added " + count + " markers.");
 			}
 			
@@ -213,15 +250,26 @@
 					infowindow.open(map,marker);
 				});
 				
+				var found = false;
+				for (var key in networkPolygons) {
+					if (networkPolygons.hasOwnProperty(key)) {
+						if (google.maps.geometry.poly.containsLocation(latlng, networkPolygons[key])) {
+							// key is the network name (e.g. 1M)
+							markerCluster[key].addMarker(marker);
+							found = true;
+						}
+					}
+				}
+				if (found == false)
+					console.log("Err: Marker data for " + markerData[index]['Address'] + " could not be matched to a network!");
 				// Delaying marker cluster creation until after all the markers have been created
-				//markerCluster.addMarker(marker);
+				//markerCluster[networkName].addMarker(marker);
 				return marker;
 			}
 			
 			function toggleHeatmap() {
 				heatmap.setMap(heatmap.getMap() ? null : map);
 			}
-			
 			function toggleMarkers() {
 				for (var i = 0; i < gmarkers.length; i++) {
 					if (gmarkers[i].visible) {
@@ -234,66 +282,13 @@
 				if (gmarkers[0].visible == false) {
 					infowindow.close();
 				}
-				markerCluster.repaint();
-			}
-			
-			function changeGradient() {
-				var gradient;
-				if (gradientNumber == 3) {
-					gradientNumber = 0;
-					heatmap.set('gradient', null);
+				
+				for (var key in markerCluster) {
+					if (markerCluster.hasOwnProperty(key)) {
+						markerCluster[key].repaint();
+					}
 				}
-				else if (gradientNumber == 0) {
-					gradient = [
-						'rgba(0, 255, 255, 0)',
-						'rgba(0, 255, 255, 1)',
-						'rgba(0, 191, 255, 1)',
-						'rgba(0, 127, 255, 1)',
-						'rgba(0, 63, 255, 1)',
-						'rgba(0, 0, 255, 1)',
-						'rgba(0, 0, 223, 1)',
-						'rgba(0, 0, 191, 1)',
-						'rgba(0, 0, 159, 1)',
-						'rgba(0, 0, 127, 1)',
-						'rgba(63, 0, 91, 1)',
-						'rgba(127, 0, 63, 1)',
-						'rgba(191, 0, 31, 1)',
-						'rgba(255, 0, 0, 1)'
-					];
-					gradientNumber++;
-				}
-				else if (gradientNumber == 1) {
-					gradient = [
-						'rgba(255, 0, 0, 0)',
-						'rgba(255, 255, 0, 0.9)',
-						'rgba(0, 255, 0, 0.7)',
-						'rgba(173, 255, 47, 0.5)',
-						'rgba(152, 251, 152, 0)',
-						'rgba(152, 251, 152, 0)',
-						'rgba(0, 0, 238, 0.5)',
-						'rgba(186, 85, 211, 0.7)',
-						'rgba(255, 0, 255, 0.9)',
-						'rgba(255, 0, 0, 1)'
-					];
-					gradientNumber++;
-				}
-				else if (gradientNumber = 2) {
-					gradient = [
-						'rgba(255, 0, 0, 0)',
-						'rgba(0, 242, 255, 0.9)',
-						'rgba(113, 235, 194, 0.9)',
-						'rgba(145, 250, 107, 0.9)',
-						'rgba(0, 186, 25, 0.9)',
-						'rgba(245, 255, 56, 0.9)',
-						'rgba(255, 196, 0, 0.9)',
-						'rgba(255, 149, 0, 0.9)',
-						'rgba(255, 0, 0, 1)'
-					];
-					gradientNumber++;
-				}
-				if (gradientNumber > 0) {
-					heatmap.set('gradient', gradient);
-				}
+				//markerCluster.repaint();
 			}
 			function changeRadius() {
 				var newRadius = heatmap.get('radius');
@@ -301,7 +296,7 @@
 					newRadius = 5;
 				newRadius += 5;
 				
-				if (newRadius > 20) {
+				if (newRadius > 15) {
 					newRadius = 5;
 				}
 				heatmap.set('radius', newRadius);
@@ -317,6 +312,62 @@
 					newOpacity = 1;
 					
 				heatmap.set('opacity', newOpacity);
+			}
+			
+			function makePolygon(polyCoords, polyLabel) {
+				var marker = new MarkerWithLabel({
+					position: new google.maps.LatLng(0, 0),
+					draggable: false,
+					raiseOnDrag: false,
+					map: map,
+					labelContent: polyLabel,
+					labelAnchor: new google.maps.Point(30, 20),
+					labelClass: "labels", // the CSS class for the label
+					labelStyle: {
+					  opacity: 1.0
+					},
+					icon: "http://placehold.it/1x1",
+					visible: false
+				 });
+				
+				var smpColors = [
+					"#0000ff",
+					"#ff0000",
+					"#00ff00",
+					"#00ffff",
+					"#ffff00",
+					"#ff00ff",
+					"#cccccc",
+					"#cc00cc",
+					"#cccc00",
+					"#00cccc",
+					"#eeeeee"
+				];
+				var randColor = smpColors[Math.floor(Math.random()*smpColors.length)];
+				var poly = new google.maps.Polygon({
+					paths: polyCoords,
+					draggable: false,
+					clickable: true,
+					//strokeColor: "#EEEEFF",
+					strokeColor: "#333333",
+					strokeOpacity: 0.5,
+					strokeWeight: 1,
+					//fillColor: "#0000ff",
+					fillColor: randColor,
+					fillOpacity: 0.15,
+					map: map
+				});
+
+				google.maps.event.addListener(poly, "mousemove", function(event) {
+					marker.setPosition(event.latLng);
+					marker.setVisible(true);
+				});
+				google.maps.event.addListener(poly, "mouseout", function(event) {
+					marker.setVisible(false);
+				});
+				//google.maps.event.clearListeners(poly, 'mouseclick');
+				
+				return poly;
 			}
 		</script>
 	</body>
