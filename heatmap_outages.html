@@ -30,10 +30,10 @@
 				position: absolute;
 				z-index: 2;
 				background-color: #fff;
-				padding: 5px;
-				text-align: center;
+				padding: 3px;
+				text-align: left;
 				font-family: 'Roboto','sans-serif';
-				line-height: 30px;
+				line-height: 25px;
 				padding-left: 10px;
 			}
 			.labels {
@@ -46,7 +46,7 @@
 				text-align: center;
 				width: auto;     
 				border: 1px solid black;
-				padding: 3px;
+				padding: 2px;
 				white-space: nowrap;
 			}
 		</style>
@@ -70,8 +70,14 @@
 		<div id="map"></div>
 		
 		<div id="query-panel">
-			<label for="switch">Flip Toggle Switch:</label>
-			<input type="checkbox" data-role="flipswitch" name="switch" id="switch">
+			<fieldset>
+			<legend>Query Panel</legend>
+			Somecheckbox <input type="checkbox" name="checkbox" value="value"><br>
+			From Date&nbsp
+			<input type="date" id="fromDate" name="fromDate"/> <br>
+			To Date&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp
+			<input type="date" id="toDate" name="toDate" min='1899-01-01' max='2099-12-31'/>
+			</fieldset>
 		</div>
 		
 		<script>
@@ -86,7 +92,25 @@
 			});
 			
 			function loadData() {
+				var today = new Date();
+				var dd = today.getDate();
+				var mm = today.getMonth()+1;
+				var yyyy = today.getFullYear();
+				if (dd<10) {
+					dd='0'+dd
+				}
+				if (mm<10) {
+					mm='0'+mm
+				}
+				today = yyyy+'-'+mm+'-'+dd;
+				
 				console.log("Creating the map...");
+				
+				document.getElementById("toDate").valueAsDate = new Date();
+				//document.getElementById("toDate").valueAsDate = today;
+				document.getElementById("fromDate").setAttribute("max", today);
+				document.getElementById("toDate").setAttribute("max", today);
+				
 				var myCenter = new google.maps.LatLng({lat: 40.782361, lng: -73.965784});
 				var mapOptions = {
 					zoom: 13,
@@ -144,10 +168,28 @@
 			function initMarkers() {
 				console.log("Loading the data for the markers and infowindows...");
 				var csvUrl = 'http://localhost:8000/data/pscdata.csv';
+				
 				alasql('SELECT * FROM CSV("'+csvUrl+'",{headers:true})', [], function(data){
+				//alasql('SELECT * FROM CSV("'+csvUrl+'",{headers:true}) WHERE CONVERT(date, [Date Time From], 101)>=CONVERT(datetime, "07-07-2015", 1) ORDER BY CONVERT(date, [Date Time From], 101) ASC', [], function(data){
+				//alasql('SELECT * FROM CSV("'+csvUrl+'",{headers:true}) WHERE [No Cust Interrupts]>10', [], function(data){
 					console.log("pscdata.csv shows " + data.length + " outage reports.");
 					headers = ['ID','Address','Latitude','Longitude','Date Time From','Date Time To','Fault Location',
 									'Partial','Root Cause','Sub Cause','Ticket No','Weather','Customer Hrs','Duration','No Cust Interrupts'];
+					
+					var minDate = new Date(data[0]['Date Time From']);
+					var dd = minDate.getDate();
+					var mm = minDate.getMonth()+1;
+					var yyyy = minDate.getFullYear();
+					if (dd<10) {
+						dd='0'+dd
+					}
+					if (mm<10) {
+						mm='0'+mm
+					}
+					minDate = yyyy+'-'+mm+'-'+dd;
+					document.getElementById("fromDate").setAttribute("min", minDate);
+					document.getElementById("fromDate").setAttribute("value", minDate);
+					
 					console.log("Creating markers...");
 					for (var i = 0; i < data.length; i++) {
 						if (data[i]['Latitude'] != "NOT FOUND") {
@@ -328,7 +370,7 @@
 					raiseOnDrag: false,
 					map: map,
 					labelContent: polyLabel,
-					labelAnchor: new google.maps.Point(30, 20),
+					labelAnchor: new google.maps.Point(15, 23),
 					labelClass: "labels", // the CSS class for the label
 					labelStyle: {
 					  opacity: 1.0
