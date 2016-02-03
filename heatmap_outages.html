@@ -25,7 +25,7 @@
 				left: 90%;
 				top: 0%;
 				background-image: none;
-				background-color: rgb(255, 255, 220);
+				background-color: rgb(255, 255, 230);
 			}
 			#floating-panel {
 				position: absolute;
@@ -36,18 +36,35 @@
 				padding: 5px;
 				border: 1px solid #999;
 				text-align: center;
-				font-family: 'Roboto','sans-serif';
+				font-family: monospace;
 				line-height: 30px;
 				padding-left: 10px;
 			}
 			#query-panel {
-				font-family: 'Roboto','sans-serif';
-				position: absolute;
+				font-family: monospace;
+				position: relative;
 				border: none;
 				left: 0%;
 				top: 80%;
-				width: 90%;
-				height: 20%;
+				background-image: none;
+			}
+			#date-panel {
+				font-family: monospace;
+				display: inline-block;
+				padding: 5px;
+				position: relative;
+				border: none;
+				top: 80%;
+				background-image: none;
+				background-color: rgb(255, 240, 240);
+			}
+			#customers-panel {
+				font-family: monospace;
+				display: inline-block;
+				padding: 5px;
+				position: relative;
+				border: none;
+				top: 80%;
 				background-image: none;
 				background-color: rgb(255, 240, 240);
 			}
@@ -55,7 +72,7 @@
 				color: blue;
 				display: block;
 				background-color: white;
-				font-family: "Lucida Grande", "Arial", sans-serif;
+				font-family: "Roboto", sans-serif;
 				font-size: 12px;
 				font-weight: bold;
 				text-align: center;
@@ -87,14 +104,25 @@
 		</div>
 		
 		<div id="query-panel">
-			<fieldset>
-			<legend>Query Panel</legend>
-			Somecheckbox <input type="checkbox" name="checkbox" value="value"><br>
-			From Date&nbsp
-			<input type="date" id="fromDate" name="fromDate"/> <br>
-			To Date&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp
-			<input type="date" id="toDate" name="toDate" min='1899-01-01' max='2099-12-31'/>
-			</fieldset>
+			<div id="date-panel">
+				<fieldset>
+				<legend>Time Interval</legend>
+				From: &nbsp
+				<input type="date" id="fromDate" name="fromDate" size="10" maxlength="10"/> <br>
+				To: &nbsp&nbsp&nbsp
+				<input type="date" id="toDate" name="toDate" size="10" maxlength="10"/>
+				</fieldset>
+			</div>
+			
+			<div id="customers-panel">
+				<fieldset>
+				<legend>No. Cust. Interrupts</legend>
+				From: &nbsp
+				<input type="number" id="minCustInt" name="minCustInt" min="0" max="99999" style="width: 75px;"/> <br>
+				To: &nbsp&nbsp&nbsp
+				<input type="number" id="maxCustInt" name="maxCustInt" min="0" max="99999" style="width: 75px;"/> <br>
+				</fieldset>
+			</div>
 		</div>
 		
 		<script>
@@ -187,8 +215,7 @@
 					console.log("pscdata.csv shows " + data.length + " outage reports.");
 					headers = ['ID','Address','Latitude','Longitude','Date Time From','Date Time To','Fault Location',
 									'Partial','Root Cause','Sub Cause','Ticket No','Weather','Customer Hrs','Duration','No Cust Interrupts'];
-					console.log(data[0]);
-					console.log(data[data.length-1]);
+					
 					var minDate = new Date(data[0]['Date Time From']);
 					var dd = minDate.getDate();
 					var mm = minDate.getMonth()+1;
@@ -290,17 +317,24 @@
 				console.log("Adding the markers to the map...");
 				for (key in markerData) {
 					if (markerData.hasOwnProperty(key)) {
-						gmarkers.push(createMarker(key));
-						count++;
+						var newMarker = createMarker(key);
+						if (newMarker != undefined) {
+							gmarkers.push(createMarker(key));
+							count++;
+						}
 					}
 				}
 				
+				/*
 				for (var key in networkPolygons) {
 					if (networkPolygons.hasOwnProperty(key)) {
 						markerCluster[key].addMarker(marker);
 					}
+					else {
+						console.log(marker);
+					}
 				}
-				
+				*/
 				//markerCluster = new MarkerClusterer(map, gmarkers, mcOptions);
 				console.log("Map initialized. " + count + " markers on the map.");
 			}
@@ -335,20 +369,26 @@
 				});
 				
 				var found = false;
+				// key is the network name (e.g. 1M)
 				for (var key in networkPolygons) {
 					if (networkPolygons.hasOwnProperty(key)) {
+						// If the network shape contains the lat long pair, add the marker to the appropriate array corresponding to that network
 						if (google.maps.geometry.poly.containsLocation(latlng, networkPolygons[key])) {
-							// key is the network name (e.g. 1M)
 							markerCluster[key].addMarker(marker);
 							found = true;
 						}
 					}
 				}
-				if (found == false)
-					console.log("Err: Marker data for " + markerData[index]['Address'] + " could not be matched to a network!");
+				
+				if (found == false) {
+					console.log("Err: Marker data for " + markerData[index]['Address'] + " could not be matched to a network! (" + markerData[index]['Latitude'] + ", " + markerData[index]['Latitude'] + ")");
+					return undefined;
+				}
 				// Delaying marker cluster creation until after all the markers have been created
 				//markerCluster[networkName].addMarker(marker);
-				return marker;
+				else {
+					return marker;
+				}
 			}
 			
 			function toggleHeatmap() {
