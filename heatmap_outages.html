@@ -118,24 +118,47 @@
 				<fieldset>
 				<legend>No. Cust. Interrupts</legend>
 				From: &nbsp
-				<input type="number" id="minCustInt" name="minCustInt" min="0" max="99999" style="width: 75px;"/> <br>
+				<input type="number" id="minCustInt" value="0" name="minCustInt" min="0" max="99999" style="width: 75px;"/> <br>
 				To: &nbsp&nbsp&nbsp
-				<input type="number" id="maxCustInt" name="maxCustInt" min="0" max="99999" style="width: 75px;"/> <br>
+				<input type="number" id="maxCustInt" value="99999" name="maxCustInt" min="0" max="99999" style="width: 75px;"/> <br>
 				</fieldset>
 			</div>
+			<p>
+				&nbsp
+				<button onclick="reset()">Reset</button>
+				<button onclick="filter()">Filter</button>
+			</p>
 		</div>
 		
 		<script>
 			var map, heatmap, numNetworks = 0;
-			
-			var networkPolygons = {};
-			var heatmapCoords = [];
-			var markerCluster = {};
-			var gmarkers = [];
-			var markerData = {};
+			var toDateDefault = "", fromDateDefault = "";
+			var networkPolygons, heatmapCoords, markerCluster, gmarkers, markerData;
 			var infowindow = new google.maps.InfoWindow({
 				maxWidth: 330
 			});
+			
+			function reset() {
+				document.getElementById("fromDate").value = fromDateDefault;
+				document.getElementById("toDate").value = toDateDefault;
+				document.getElementById("minCustInt").value = 0;
+				document.getElementById("maxCustInt").value = 99999;
+			}
+			
+			function filter() {
+				console.log("Filtering data points on the criteria:");
+				console.log("From Date:" + document.getElementById("fromDate").value);
+				console.log("To Date:" + document.getElementById("toDate").value);
+				console.log("Min No. Cust Int.:" + document.getElementById("minCustInt").value);
+				console.log("Max No. Cust Int.:" + document.getElementById("maxCustInt").value);
+				var filterParams = {
+					fromDate: document.getElementById("fromDate").value,
+					toDate: document.getElementById("toDate").value,
+					minCust: document.getElementById("minCustInt").value,
+					maxCust: document.getElementById("maxCustInt").value
+				};
+				initMarkers(filterParams);
+			}
 			
 			function loadData() {
 				var today = new Date();
@@ -162,11 +185,13 @@
 				map = new google.maps.Map(document.getElementById('map'), mapOptions);
 				
 				drawBoundaries();
-				initMarkers();
+				initMarkers(undefined);
 			}
 			
 			function drawBoundaries() {
 				console.log("Drawing network boundaries...");
+				networkPolygons = {};
+				markerCluster = {};
 				
 				var kmlPath = "http://localhost:8000/data/networks.xml";
 				var request = new XMLHttpRequest();
@@ -205,46 +230,67 @@
 				}
 			}
 			
-			function initMarkers() {
+			function initMarkers(filterParams) {
+				heatmapCoords = [];
+				markerCluster = {};
+				gmarkers = [];
+				markerData = {};
+				
 				console.log("Loading the data for the markers and infowindows...");
 				var csvUrl = 'http://localhost:8000/data/pscdata.csv';
+				var sqlSelectStr;
+				if (filterParams === undefined) {
+					sqlSelectStr = 'SELECT * FROM CSV("'+csvUrl+'",{headers:true}) ORDER BY CONVERT(date, [Date Time From], 101) ASC';
+				}
+				else {
+					markerData = {};
+					sqlSelectStr = 'SELECT * FROM CSV("'+csvUrl+'",{headers:true}) WHERE CONVERT(date, [Date Time From], 101)>=CONVERT(datetime, "' + filterParams.fromDate + '" , 1) ';
+					sqlSelectStr = sqlSelectStr + 'AND CONVERT(date, [Date Time To], 101)>=CONVERT(datetime, "' + filterParams.toDate + '" , 1) ';
+					sqlSelectStr = sqlSelectStr + 'AND [No Cust Interrupts] >= ' + filterParams.minCust + ' AND [No Cust Interrupts] <= ' + filterParams.maxCust + ', ORDER BY CONVERT(date, [Date Time From], 101) ASC';
+					//" ORDER BY CONVERT(date, [Date Time From], 101) ASC'
+					//alasql('SELECT * FROM CSV("'+csvUrl+'",{headers:true}) WHERE CONVERT(date, [Date Time From], 101)>=CONVERT(datetime, "07-07-2015", 1) ORDER BY CONVERT(date, [Date Time From], 101) ASC', [], function(data){
+					//alasql('SELECT * FROM CSV("'+csvUrl+'",{headers:true}) WHERE [No Cust Interrupts]>10', [], function(data){
+					
+				}
 				
-				alasql('SELECT * FROM CSV("'+csvUrl+'",{headers:true}) ORDER BY CONVERT(date, [Date Time From], 101) ASC', [], function(data){
-				//alasql('SELECT * FROM CSV("'+csvUrl+'",{headers:true}) WHERE CONVERT(date, [Date Time From], 101)>=CONVERT(datetime, "07-07-2015", 1) ORDER BY CONVERT(date, [Date Time From], 101) ASC', [], function(data){
-				//alasql('SELECT * FROM CSV("'+csvUrl+'",{headers:true}) WHERE [No Cust Interrupts]>10', [], function(data){
+				alasql(sqlSelectStr, [], function(data){
 					console.log("pscdata.csv shows " + data.length + " outage reports.");
 					headers = ['ID','Address','Latitude','Longitude','Date Time From','Date Time To','Fault Location',
 									'Partial','Root Cause','Sub Cause','Ticket No','Weather','Customer Hrs','Duration','No Cust Interrupts'];
 					
-					var minDate = new Date(data[0]['Date Time From']);
-					var dd = minDate.getDate();
-					var mm = minDate.getMonth()+1;
-					var yyyy = minDate.getFullYear();
-					if (dd<10) {
-						dd='0'+dd
+					if (filterParams === undefined) {
+						var minDate = new Date(data[0]['Date Time From']);
+						var dd = minDate.getDate();
+						var mm = minDate.getMonth()+1;
+						var yyyy = minDate.getFullYear();
+						if (dd<10) {
+							dd='0'+dd
+						}
+						if (mm<10) {
+							mm='0'+mm
+						}
+						minDate = yyyy+'-'+mm+'-'+dd;
+						document.getElementById("fromDate").setAttribute("min", minDate);
+						document.getElementById("toDate").setAttribute("min", minDate);
+						document.getElementById("fromDate").setAttribute("value", minDate);
+						fromDateDefault = minDate;
+						
+						var maxDate = new Date(data[data.length-1]['Date Time From']);
+						dd = maxDate.getDate();
+						mm = maxDate.getMonth()+1;
+						yyyy = maxDate.getFullYear();
+						if (dd<10) {
+							dd='0'+dd
+						}
+						if (mm<10) {
+							mm='0'+mm
+						}
+						maxDate = yyyy+'-'+mm+'-'+dd;
+						document.getElementById("toDate").setAttribute("max", maxDate);
+						document.getElementById("fromDate").setAttribute("max", maxDate);
+						document.getElementById("toDate").setAttribute("value", maxDate);
+						toDateDefault = maxDate;
 					}
-					if (mm<10) {
-						mm='0'+mm
-					}
-					minDate = yyyy+'-'+mm+'-'+dd;
-					document.getElementById("fromDate").setAttribute("min", minDate);
-					document.getElementById("toDate").setAttribute("min", minDate);
-					document.getElementById("fromDate").setAttribute("value", minDate);
-					
-					var maxDate = new Date(data[data.length-1]['Date Time From']);
-					dd = maxDate.getDate();
-					mm = maxDate.getMonth()+1;
-					yyyy = maxDate.getFullYear();
-					if (dd<10) {
-						dd='0'+dd
-					}
-					if (mm<10) {
-						mm='0'+mm
-					}
-					maxDate = yyyy+'-'+mm+'-'+dd;
-					document.getElementById("toDate").setAttribute("max", maxDate);
-					document.getElementById("fromDate").setAttribute("max", maxDate);
-					document.getElementById("toDate").setAttribute("value", maxDate);
 					
 					console.log("Creating markers...");
 					for (var i = 0; i < data.length; i++) {
@@ -301,17 +347,6 @@
 					map: map
 				});
 				
-				/*
-				//marker cluster option
-				var mcOptions = {
-					gridSize: 25,
-					maxZoom: 18,
-					ignoreHidden: true,
-					minimumClusterSize: 3
-				};
-				*/
-				
-				//markerCluster = new MarkerClusterer(map, [], mcOptions);
 				var key;
 				var count = 0;
 				console.log("Adding the markers to the map...");
@@ -325,17 +360,6 @@
 					}
 				}
 				
-				/*
-				for (var key in networkPolygons) {
-					if (networkPolygons.hasOwnProperty(key)) {
-						markerCluster[key].addMarker(marker);
-					}
-					else {
-						console.log(marker);
-					}
-				}
-				*/
-				//markerCluster = new MarkerClusterer(map, gmarkers, mcOptions);
 				console.log("Map initialized. " + count + " markers on the map.");
 			}
 			
@@ -358,12 +382,12 @@
 				google.maps.event.addListener(marker, 'click', function() {
 					infowindow.close();
 					
-					var text = "<font face='courier'><b>" + markerData[index]['Address'] + " - (" +  markerData[index]['Num Entries'] + ")</b><pre>";
+					var text = "<b>" + markerData[index]['Address'] + " - (" +  markerData[index]['Num Entries'] + ")</b><pre>";
 					for (var headerIter = 4; headerIter < headers.length; headerIter++) {
 						var headerName = headers[headerIter];
 						text +=  "<b>" + headerName + "</b>: " + ('' + markerData[index][headerName] + '').replace(/,/g, '&nbsp;') + "<br>";
 					}
-					text += "</font></pre>";
+					text += "</pre>";
 					infowindow.setContent(text);
 					infowindow.open(map,marker);
 				});
@@ -384,8 +408,6 @@
 					console.log("Err: Marker data for " + markerData[index]['Address'] + " could not be matched to a network! (" + markerData[index]['Latitude'] + ", " + markerData[index]['Latitude'] + ")");
 					return undefined;
 				}
-				// Delaying marker cluster creation until after all the markers have been created
-				//markerCluster[networkName].addMarker(marker);
 				else {
 					return marker;
 				}
@@ -412,7 +434,6 @@
 						markerCluster[key].repaint();
 					}
 				}
-				//markerCluster.repaint();
 			}
 			function changeRadius() {
 				var newRadius = heatmap.get('radius');
@@ -487,7 +508,6 @@
 				google.maps.event.addListener(poly, "mouseout", function(event) {
 					marker.setVisible(false);
 				});
-				//google.maps.event.clearListeners(poly, 'mouseclick');
 				
 				return poly;
 			}
