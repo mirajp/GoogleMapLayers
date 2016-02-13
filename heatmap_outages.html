@@ -125,8 +125,8 @@
 			</div>
 			<p>
 				&nbsp
-				<button onclick="reset()">Reset</button>
 				<button onclick="filter()">Filter</button>
+				<button onclick="reset()">Reset</button>
 			</p>
 		</div>
 		
@@ -146,14 +146,17 @@
 			}
 			
 			function filter() {
+				
 				console.log("Filtering data points on the criteria:");
-				console.log("From Date:" + document.getElementById("fromDate").value);
-				console.log("To Date:" + document.getElementById("toDate").value);
-				console.log("Min No. Cust Int.:" + document.getElementById("minCustInt").value);
-				console.log("Max No. Cust Int.:" + document.getElementById("maxCustInt").value);
+				console.log("From Date: " + document.getElementById("fromDate").value);
+				var fromDateVal = (document.getElementById("fromDate").value).split("-"); //yyyy-dd-mm
+				console.log("To Date: " + document.getElementById("toDate").value);
+				var toDateVal = (document.getElementById("toDate").value).split("-"); //yyyy-dd-mm
+				console.log("Min No. Cust Int.: " + document.getElementById("minCustInt").value);
+				console.log("Max No. Cust Int.: " + document.getElementById("maxCustInt").value);
 				var filterParams = {
-					fromDate: document.getElementById("fromDate").value,
-					toDate: document.getElementById("toDate").value,
+					fromDate: fromDateVal[1]+"-"+fromDateVal[2]+"-"+fromDateVal[0], //dd-mm-yyyy
+					toDate: toDateVal[1]+"-"+toDateVal[2]+"-"+toDateVal[0], //dd-mm-yyyy
 					minCust: document.getElementById("minCustInt").value,
 					maxCust: document.getElementById("maxCustInt").value
 				};
@@ -232,9 +235,12 @@
 			
 			function initMarkers(filterParams) {
 				heatmapCoords = [];
-				markerCluster = {};
 				gmarkers = [];
 				markerData = {};
+				
+				for (var networkIter = 0; networkIter < numNetworks; networkIter++) {
+					markerCluster[networkIter] = 
+				}
 				
 				console.log("Loading the data for the markers and infowindows...");
 				var csvUrl = 'http://localhost:8000/data/pscdata.csv';
@@ -243,10 +249,13 @@
 					sqlSelectStr = 'SELECT * FROM CSV("'+csvUrl+'",{headers:true}) ORDER BY CONVERT(date, [Date Time From], 101) ASC';
 				}
 				else {
-					markerData = {};
-					sqlSelectStr = 'SELECT * FROM CSV("'+csvUrl+'",{headers:true}) WHERE CONVERT(date, [Date Time From], 101)>=CONVERT(datetime, "' + filterParams.fromDate + '" , 1) ';
-					sqlSelectStr = sqlSelectStr + 'AND CONVERT(date, [Date Time To], 101)>=CONVERT(datetime, "' + filterParams.toDate + '" , 1) ';
-					sqlSelectStr = sqlSelectStr + 'AND [No Cust Interrupts] >= ' + filterParams.minCust + ' AND [No Cust Interrupts] <= ' + filterParams.maxCust + ', ORDER BY CONVERT(date, [Date Time From], 101) ASC';
+					sqlSelectStr = 'SELECT * FROM CSV("'+csvUrl+'",{headers:true}) WHERE (CONVERT(date, [Date Time From], 101) >= CONVERT(datetime, "' + filterParams.fromDate + '" , 1) ';
+					sqlSelectStr = sqlSelectStr + 'AND CONVERT(date, [Date Time To], 101) <= CONVERT(datetime, "' + filterParams.toDate + '" , 1) ';
+					sqlSelectStr = sqlSelectStr + 'AND [No Cust Interrupts] >= ' + filterParams.minCust + ' AND [No Cust Interrupts] <= ' + filterParams.maxCust + ')';
+					sqlSelectStr = sqlSelectStr + 'ORDER BY CONVERT(date, [Date Time From], 101) ASC';
+					
+					console.log("Sql String:");
+					console.log(sqlSelectStr);
 					//" ORDER BY CONVERT(date, [Date Time From], 101) ASC'
 					//alasql('SELECT * FROM CSV("'+csvUrl+'",{headers:true}) WHERE CONVERT(date, [Date Time From], 101)>=CONVERT(datetime, "07-07-2015", 1) ORDER BY CONVERT(date, [Date Time From], 101) ASC', [], function(data){
 					//alasql('SELECT * FROM CSV("'+csvUrl+'",{headers:true}) WHERE [No Cust Interrupts]>10', [], function(data){
@@ -347,14 +356,14 @@
 					map: map
 				});
 				
-				var key;
+				var dataIter;
 				var count = 0;
 				console.log("Adding the markers to the map...");
-				for (key in markerData) {
-					if (markerData.hasOwnProperty(key)) {
-						var newMarker = createMarker(key);
+				for (dataIter in markerData) {
+					if (markerData.hasOwnProperty(dataIter)) {
+						var newMarker = createMarker(dataIter);
 						if (newMarker != undefined) {
-							gmarkers.push(createMarker(key));
+							gmarkers.push(newMarker);
 							count++;
 						}
 					}
@@ -381,7 +390,7 @@
 				
 				google.maps.event.addListener(marker, 'click', function() {
 					infowindow.close();
-					
+					console.log("click listener's index = " + index);
 					var text = "<b>" + markerData[index]['Address'] + " - (" +  markerData[index]['Num Entries'] + ")</b><pre>";
 					for (var headerIter = 4; headerIter < headers.length; headerIter++) {
 						var headerName = headers[headerIter];
