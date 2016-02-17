@@ -133,7 +133,7 @@
 		<script>
 			var map, heatmap, numNetworks = 0;
 			var toDateDefault = "", fromDateDefault = "";
-			var networkPolygons, heatmapCoords, markerCluster, gmarkers, markerData;
+			var networkPolygons, heatmapCoords, markerCluster, gmarkers = [], markerData;
 			var infowindow = new google.maps.InfoWindow({
 				maxWidth: 330
 			});
@@ -223,8 +223,8 @@
 					
 					//marker cluster option
 					var mcOptions = {
-						gridSize: 250,
-						maxZoom: 16,
+						gridSize: 100,
+						maxZoom: 15,
 						ignoreHidden: true,
 						minimumClusterSize: 2
 					};
@@ -235,27 +235,49 @@
 			
 			function initMarkers(filterParams) {
 				heatmapCoords = [];
-				gmarkers = [];
 				markerData = {};
+				//marker cluster option
+				var mcOptions = {
+					gridSize: 100,
+					maxZoom: 15,
+					ignoreHidden: true,
+					minimumClusterSize: 2
+				};
 				
-				for (var networkIter = 0; networkIter < numNetworks; networkIter++) {
-					markerCluster[networkIter] = 
-				}
-				
-				console.log("Loading the data for the markers and infowindows...");
 				var csvUrl = 'http://localhost:8000/data/pscdata.csv';
 				var sqlSelectStr;
 				if (filterParams === undefined) {
+					console.log("Initial load for all the data for the markers...");
 					sqlSelectStr = 'SELECT * FROM CSV("'+csvUrl+'",{headers:true}) ORDER BY CONVERT(date, [Date Time From], 101) ASC';
 				}
 				else {
+					console.log("Removing the heatmap...");
+					heatmap.setMap(null);
+					
+					console.log("Removing the individual markers...");
+					for (var i = 0; i < gmarkers.length; i++) {
+						gmarkers[i].setMap(null);
+					}
+					gmarkers = [];
+					
+					console.log("Removing the marker clusters...");
+					for (var key in markerCluster) {
+						if (markerCluster.hasOwnProperty(key)) {
+							markerCluster[key].setMap(null);
+							markerCluster[key].clearMarkers();
+							markerCluster[key] = new MarkerClusterer(map, [], mcOptions);
+							markerCluster[key].repaint();
+						}	
+					}
+					
+					console.log("Loading the filtered data for the markers...");
 					sqlSelectStr = 'SELECT * FROM CSV("'+csvUrl+'",{headers:true}) WHERE (CONVERT(date, [Date Time From], 101) >= CONVERT(datetime, "' + filterParams.fromDate + '" , 1) ';
 					sqlSelectStr = sqlSelectStr + 'AND CONVERT(date, [Date Time To], 101) <= CONVERT(datetime, "' + filterParams.toDate + '" , 1) ';
 					sqlSelectStr = sqlSelectStr + 'AND [No Cust Interrupts] >= ' + filterParams.minCust + ' AND [No Cust Interrupts] <= ' + filterParams.maxCust + ')';
 					sqlSelectStr = sqlSelectStr + 'ORDER BY CONVERT(date, [Date Time From], 101) ASC';
 					
-					console.log("Sql String:");
-					console.log(sqlSelectStr);
+					//console.log("Sql String:");
+					//console.log(sqlSelectStr);
 					//" ORDER BY CONVERT(date, [Date Time From], 101) ASC'
 					//alasql('SELECT * FROM CSV("'+csvUrl+'",{headers:true}) WHERE CONVERT(date, [Date Time From], 101)>=CONVERT(datetime, "07-07-2015", 1) ORDER BY CONVERT(date, [Date Time From], 101) ASC', [], function(data){
 					//alasql('SELECT * FROM CSV("'+csvUrl+'",{headers:true}) WHERE [No Cust Interrupts]>10', [], function(data){
