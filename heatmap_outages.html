@@ -24,6 +24,7 @@
 				height: 100%;
 				left: 90%;
 				top: 0%;
+				font-size: 110%;
 				background-image: none;
 				background-color: rgb(255, 255, 230);
 			}
@@ -100,7 +101,7 @@
 		
 		<div id="map"></div>
 		<div id="networks-panel">
-			NETWORKS PANEL
+			<h4><u>Building Outages Per Network</u></h4>
 		</div>
 		
 		<div id="query-panel">
@@ -391,6 +392,13 @@
 					}
 				}
 				
+				document.getElementById('networks-panel').innerHTML = '<h4><u>Building Outages Per Network</u></h4><p>';
+				for (var key in markerCluster) {
+					if (markerCluster.hasOwnProperty(key)) {
+						document.getElementById('networks-panel').innerHTML += '<b>' + key + '</b>: ' + markerCluster[key].getTotalMarkers() + '<br>';
+					}
+				}
+				document.getElementById('networks-panel').innerHTML += '</p>';
 				console.log("Map initialized. " + count + " markers on the map.");
 			}
 			
