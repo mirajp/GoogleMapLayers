@@ -43,9 +43,17 @@
 			}
 			#query-panel {
 				font-family: monospace;
-				position: relative;
+				position: absolute;
 				border: none;
 				left: 0%;
+				top: 80%;
+				background-image: none;
+			}
+			#recenter-panel {
+				font-family: monospace;
+				position: absolute;
+				border: none;
+				left: 38%;
 				top: 80%;
 				background-image: none;
 			}
@@ -84,7 +92,8 @@
 			}
 		</style>
 		
-		<script src="http://maps.google.com/maps/api/js?&libraries=visualization"></script>
+		<script src="http://maps.google.com/maps/api/js?&libraries=visualization,places"></script>
+		<!-- <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCJX8q3ThLljfIou6UPxhiIDlaSYw6plbs&libraries=places,visualization&callback=initAutocomplete"></script> -->
 		<script src="lib/jquery-1.11.3.js"></script>
 		<script src="lib/alasql.min.js"></script>
 		<script src="lib/markerclusterer.js"></script>
@@ -101,53 +110,126 @@
 		
 		<div id="map"></div>
 		<div id="networks-panel">
-			<h4><u>Building Outages Per Network</u></h4>
+			<b>Building Outages Per Network</b>
 		</div>
 		
 		<div id="query-panel">
-			<div id="date-panel">
-				<fieldset>
-				<legend>Time Interval</legend>
-				From: &nbsp
-				<input type="date" id="fromDate" name="fromDate" size="10" maxlength="10"/> <br>
-				To: &nbsp&nbsp&nbsp
-				<input type="date" id="toDate" name="toDate" size="10" maxlength="10"/>
-				</fieldset>
-			</div>
+			<fieldset>
+				<legend>Filter Outages</legend>
+				
+				<div id="date-panel">
+					<fieldset>
+					<legend>Time Interval</legend>
+					From: &nbsp
+					<input type="date" id="fromDate" name="fromDate" size="10" maxlength="10"/> <br>
+					To: &nbsp&nbsp&nbsp
+					<input type="date" id="toDate" name="toDate" size="10" maxlength="10"/>
+					</fieldset>
+				</div>
+				
+				<div id="customers-panel">
+					<fieldset>
+					<legend>No. Cust. Interrupts</legend>
+					From: &nbsp
+					<input type="number" id="minCustInt" value="0" name="minCustInt" min="0" max="99999" style="width: 75px;"/> <br>
+					To: &nbsp&nbsp&nbsp
+					<input type="number" id="maxCustInt" value="99999" name="maxCustInt" min="0" max="99999" style="width: 75px;"/> <br>
+					</fieldset>
+				</div>
+				
+				<p>
+					&nbsp
+					<button onclick="filter()">Filter</button>
+					<button onclick="reset()">Reset</button>
+				</p>
+			</fieldset>
 			
-			<div id="customers-panel">
-				<fieldset>
-				<legend>No. Cust. Interrupts</legend>
-				From: &nbsp
-				<input type="number" id="minCustInt" value="0" name="minCustInt" min="0" max="99999" style="width: 75px;"/> <br>
-				To: &nbsp&nbsp&nbsp
-				<input type="number" id="maxCustInt" value="99999" name="maxCustInt" min="0" max="99999" style="width: 75px;"/> <br>
-				</fieldset>
-			</div>
-			<p>
-				&nbsp
-				<button onclick="filter()">Filter</button>
-				<button onclick="reset()">Reset</button>
-			</p>
+		</div>
+			
+		<div id="recenter-panel">
+			<fieldset>
+				<legend>Set Map Center</legend>
+				New Location:
+				<div id="locationField">
+					<input id="autocomplete" placeholder="Enter your address" onFocus="geolocate()" type="text" style='color:blue; font-size:90%; width:300px'></input>
+				</div>
+				
+				<p>
+					&nbsp
+					<button onclick="recenter()">Recenter</button>
+				</p>
+			</fieldset>
 		</div>
 		
 		<script>
-			var map, heatmap, numNetworks = 0;
+			var map, heatmap, numNetworks = 0, maxCustInt = 0, minCustInt = Infinity;
+			var recenterLocation;
+			var overallMinCustInt, overallMaxCustInt;
 			var toDateDefault = "", fromDateDefault = "";
 			var networkPolygons, heatmapCoords, markerCluster, gmarkers = [], markerData;
+			
+			// Marker Cluster options
+			var mcOptions = {
+				imagePath: 'markers/cluster',
+				gridSize: 100,
+				maxZoom: 15,
+				ignoreHidden: true,
+				minimumClusterSize: 2
+			};
 			var infowindow = new google.maps.InfoWindow({
 				maxWidth: 330
 			});
 			
+			function recenter() {
+				console.log("Recenter picked.");
+				map.setCenter(recenterLocation);
+				map.setZoom(18);
+			}
+			
+			function initAutocomplete() {
+                // Create the autocomplete object, restricting the search to geographical
+                // location types.
+                autocomplete = new google.maps.places.Autocomplete(
+                        /** @type {!HTMLInputElement} */(document.getElementById('autocomplete')),
+                        {types: ['geocode']});
+
+                // When the user selects an address from the dropdown, populate the address
+                // fields in the form.
+                autocomplete.addListener('place_changed', fillInAddress);
+            }
+			
+			function fillInAddress() {
+                // Get the place details from the autocomplete object.
+				console.log("FillInAddress");
+                var place = autocomplete.getPlace();
+				console.log(place.geometry.location);
+				recenterLocation = place.geometry.location;
+            }
+			
+			function geolocate() {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(function(position) {
+                        var geolocation = {
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude
+                        };
+                        var circle = new google.maps.Circle({
+                            center: geolocation,
+                            radius: position.coords.accuracy
+                        });
+                        autocomplete.setBounds(circle.getBounds());
+                    });
+                }
+            }
+			
 			function reset() {
 				document.getElementById("fromDate").value = fromDateDefault;
 				document.getElementById("toDate").value = toDateDefault;
-				document.getElementById("minCustInt").value = 0;
-				document.getElementById("maxCustInt").value = 99999;
+				document.getElementById("minCustInt").value = overallMinCustInt;
+				document.getElementById("maxCustInt").value = overallMaxCustInt;
 			}
 			
 			function filter() {
-				
 				console.log("Filtering data points on the criteria:");
 				console.log("From Date: " + document.getElementById("fromDate").value);
 				var fromDateVal = (document.getElementById("fromDate").value).split("-"); //yyyy-dd-mm
@@ -165,6 +247,7 @@
 			}
 			
 			function loadData() {
+				initAutocomplete();
 				var today = new Date();
 				var dd = today.getDate();
 				var mm = today.getMonth()+1;
@@ -181,8 +264,8 @@
 				var myCenter = new google.maps.LatLng({lat: 40.782361, lng: -73.965784});
 				var mapOptions = {
 					zoom: 13,
-					minZoom: 13,
-					maxZoom: 18,
+					minZoom: 12,
+					maxZoom: 19,
 					center: myCenter,
 					mapTypeId: google.maps.MapTypeId.ROADMAP
 				};
@@ -221,14 +304,6 @@
 					}
 					
 					networkPolygons[networkName] = makePolygon(networkCoordinates, networkName);
-					
-					//marker cluster option
-					var mcOptions = {
-						gridSize: 100,
-						maxZoom: 15,
-						ignoreHidden: true,
-						minimumClusterSize: 2
-					};
 					markerCluster[networkName] = new MarkerClusterer(map, [], mcOptions);
 					numNetworks++;
 				}
@@ -238,12 +313,6 @@
 				heatmapCoords = [];
 				markerData = {};
 				//marker cluster option
-				var mcOptions = {
-					gridSize: 100,
-					maxZoom: 15,
-					ignoreHidden: true,
-					minimumClusterSize: 2
-				};
 				
 				var csvUrl = 'http://localhost:8000/data/pscdata.csv';
 				var sqlSelectStr;
@@ -325,6 +394,9 @@
 					}
 					
 					console.log("Creating markers...");
+					minCustInt = Infinity;
+					maxCustInt = 0;
+					
 					for (var i = 0; i < data.length; i++) {
 						if (data[i]['Latitude'] != "NOT FOUND") {
 							var dataAddress = data[i]['Address'];
@@ -348,24 +420,38 @@
 								}
 								numEntries++;
 								markerData[dataAddress]['Num Entries'] = numEntries;
-								
 								for (var j = 0; j < headers.length; j++) {
 									var headerName = headers[j];
 									if (headerName != 'Address' && headerName != 'Latitude' && headerName != 'Longitude' && headerName != 'ID') {
 										markerData[dataAddress][headerName] += '' + data[i][headerName];
 									}
 								}
-							}
+							}	
 							else {
 								markerData[dataAddress] = {};
+								markerData[dataAddress]['Num Entries'] = 1;
 								for (var j = 0; j < headers.length; j++) {
 									var headerName = headers[j];
 									markerData[dataAddress][headerName] = data[i][headerName];
 								}
-								markerData[dataAddress]['Num Entries'] = 1;
+
 							}
+							
+							var numCustInt = data[i]['No Cust Interrupts'];
+							if (numCustInt < minCustInt)
+								minCustInt = numCustInt;
+							if (numCustInt > maxCustInt)
+								maxCustInt = numCustInt;
 						}
 					}
+					document.getElementById("minCustInt").value = minCustInt;
+					document.getElementById("maxCustInt").value = maxCustInt;
+					
+					if (filterParams == undefined) {
+						overallMaxCustInt = maxCustInt;
+						overallMinCustInt = minCustInt;
+					}
+					
 					initMap();
 				});
 			}
@@ -392,7 +478,7 @@
 					}
 				}
 				
-				document.getElementById('networks-panel').innerHTML = '<h4><u>Building Outages Per Network</u></h4><p>';
+				document.getElementById('networks-panel').innerHTML = '<b>Building Outages Per Network</b><p>';
 				for (var key in markerCluster) {
 					if (markerCluster.hasOwnProperty(key)) {
 						document.getElementById('networks-panel').innerHTML += '<b>' + key + '</b>: ' + markerCluster[key].getTotalMarkers() + '<br>';
@@ -530,11 +616,9 @@
 					paths: polyCoords,
 					draggable: false,
 					clickable: true,
-					//strokeColor: "#EEEEFF",
 					strokeColor: "#333333",
 					strokeOpacity: 0.5,
 					strokeWeight: 1,
-					//fillColor: "#0000ff",
 					fillColor: randColor,
 					fillOpacity: 0.15,
 					map: map
