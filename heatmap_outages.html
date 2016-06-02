@@ -166,6 +166,7 @@
 			var recenterLocation;
 			var overallMinCustInt, overallMaxCustInt;
 			var toDateDefault = "", fromDateDefault = "";
+			var networkPolygonCoords = {};
 			var networkPolygons, heatmapCoords, markerCluster, gmarkers = [], markerData;
 			
 			// Marker Cluster options
@@ -304,6 +305,7 @@
 					}
 					
 					networkPolygons[networkName] = makePolygon(networkCoordinates, networkName);
+					networkPolygonCoords[networkName] = networkCoordinates;
 					markerCluster[networkName] = new MarkerClusterer(map, [], mcOptions);
 					numNetworks++;
 				}
@@ -456,6 +458,20 @@
 				});
 			}
 			
+			function moveToNetwork(networkName) {
+				console.log("move to network called by network " + networkName)
+				var bounds = new google.maps.LatLngBounds();
+				var networkBounds = networkPolygonCoords[networkName];
+				
+				for (i = 0; i < networkBounds.length; i++) {
+					bounds.extend(networkBounds[i]);
+				}
+				
+				map.setCenter(bounds.getCenter());
+				map.setZoom(14);
+				return false;
+			}
+			
 			function initMap() {
 				console.log("Creating the heatmap...");
 				heatmap = new google.maps.visualization.HeatmapLayer({
@@ -481,7 +497,7 @@
 				document.getElementById('networks-panel').innerHTML = '<b>Building Outages Per Network</b><p>';
 				for (var key in markerCluster) {
 					if (markerCluster.hasOwnProperty(key)) {
-						document.getElementById('networks-panel').innerHTML += '<b>' + key + '</b>: ' + markerCluster[key].getTotalMarkers() + '<br>';
+						document.getElementById('networks-panel').innerHTML += '<b><a id="' + key + '" href="javascript:void(0);" onclick=\"moveToNetwork(\'' + key + '\'); return false;\">' + key + '</a></b>: ' + markerCluster[key].getTotalMarkers() + '<br>';
 					}
 				}
 				document.getElementById('networks-panel').innerHTML += '</p>';
