@@ -98,6 +98,7 @@
 		<script src="lib/alasql.min.js"></script>
 		<script src="lib/markerclusterer.js"></script>
 		<script src="lib/markerwithlabel_packed.js"></script>
+		<script src="lib/infobubble-compiled.js"></script>
 	</head>
 
 	<body onload='loadData()'>
@@ -167,7 +168,7 @@
 			var overallMinCustInt, overallMaxCustInt;
 			var toDateDefault = "", fromDateDefault = "";
 			var networkPolygonCoords = {};
-			var networkPolygons, heatmapCoords, markerCluster, gmarkers = [], markerData;
+			var networkPolygons, heatmapCoords, markerCluster, gmarkers = [], markerData, bubbleData;
 			
 			// Marker Cluster options
 			var mcOptions = {
@@ -314,6 +315,7 @@
 			function initMarkers(filterParams) {
 				heatmapCoords = [];
 				markerData = {};
+				bubbleData = {};
 				//marker cluster option
 				
 				var csvUrl = 'http://localhost:8000/data/pscdata.csv';
@@ -398,15 +400,18 @@
 					console.log("Creating markers...");
 					minCustInt = Infinity;
 					maxCustInt = 0;
-					
 					for (var i = 0; i < data.length; i++) {
 						if (data[i]['Latitude'] != "NOT FOUND") {
 							var dataAddress = data[i]['Address'];
 							heatmapCoords.push(new google.maps.LatLng(data[i]['Latitude'], data[i]['Longitude']));
+							var infoBubble;
+							
 							
 							// If the address is already in the markerData map, then append on values
 							if (dataAddress in markerData) {
 								var numEntries = markerData[dataAddress]['Num Entries'];
+								infoBubble = bubbleData[dataAddress];
+								/*
 								for (var j = 0; j < headers.length; j++) {
 									var headerName = headers[j];
 									if (headerName != 'Address' && headerName != 'Latitude' && headerName != 'Longitude' && headerName != 'ID') {
@@ -420,24 +425,48 @@
 										}
 									}
 								}
+								*/
 								numEntries++;
 								markerData[dataAddress]['Num Entries'] = numEntries;
+								/*
 								for (var j = 0; j < headers.length; j++) {
 									var headerName = headers[j];
 									if (headerName != 'Address' && headerName != 'Latitude' && headerName != 'Longitude' && headerName != 'ID') {
 										markerData[dataAddress][headerName] += '' + data[i][headerName];
 									}
 								}
+								*/
 							}	
 							else {
 								markerData[dataAddress] = {};
+								infoBubble = new InfoBubble({
+									minWidth: 200,
+									maxWidth: 250,
+									minHeight: 190,
+									maxHeight: 190
+								});
+								bubbleData[dataAddress] = infoBubble;
 								markerData[dataAddress]['Num Entries'] = 1;
+								
 								for (var j = 0; j < headers.length; j++) {
 									var headerName = headers[j];
 									markerData[dataAddress][headerName] = data[i][headerName];
 								}
+								
 
 							}
+							
+							var contentStr = "<h2>" + data[i]['Address'] + "</h2>";
+							// Add the infobubble data as html string content
+							for (var j = 0; j < headers.length; j++) {
+								var headerName = headers[j];
+								var headerValue = data[i][headerName];
+								if (headerName != 'Address' && headerName != 'Latitude' && headerName != 'Longitude' && headerName != 'ID') {
+									contentStr += "<b>" + headerName + "</b>: " + headerValue + "<br>"
+								}
+							}
+							infoBubble.addTab(markerData[dataAddress]['Num Entries'], contentStr);
+							
 							
 							var numCustInt = data[i]['No Cust Interrupts'];
 							if (numCustInt < minCustInt)
@@ -520,6 +549,10 @@
 					title: markerData[index]['Address']
 				});
 				
+				
+				var infoBubble = bubbleData[index];
+				/*
+				// Old event listener to swap out text for the infowindow
 				google.maps.event.addListener(marker, 'click', function() {
 					infowindow.close();
 					console.log("click listener's index = " + index);
@@ -531,6 +564,13 @@
 					text += "</pre>";
 					infowindow.setContent(text);
 					infowindow.open(map,marker);
+				});
+				*/
+				// New event listener that displays the tabbed infobubble
+				google.maps.event.addListener(marker, 'click', function() {
+					if (!infoBubble.isOpen()) {
+						infoBubble.open(map, marker);
+					}
 				});
 				
 				var found = false;
