@@ -2,7 +2,7 @@
 <html>
 	<head>
 		<meta charset="utf-8" />
-		<title>Heatmaps</title>
+		<title>Historical PSC Outmage Map</title>
 		<style>
 			html, body {
 				height: 100%;
@@ -47,6 +47,7 @@
 				border: none;
 				left: 0%;
 				top: 80%;
+				height: 20%;
 				background-image: none;
 			}
 			#recenter-panel {
@@ -55,6 +56,7 @@
 				border: none;
 				left: 38%;
 				top: 80%;
+				height: 20%;
 				background-image: none;
 			}
 			#date-panel {
@@ -77,33 +79,34 @@
 				background-image: none;
 				background-color: rgb(255, 240, 240);
 			}
-			.labels {
-				color: blue;
-				display: block;
-				background-color: white;
-				font-family: "Roboto", sans-serif;
-				font-size: 12px;
+			.infoBubble {
+				color: #fff;
+				font-family: Helvetica Neue, Helvetica, arial;
+				font-size: 16px;
+				line-height: 25px;
+				padding: 4px 45px 4px 15px;
 				font-weight: bold;
-				text-align: center;
-				width: auto;     
-				border: 1px solid black;
-				padding: 2px;
-				white-space: nowrap;
 			}
 		</style>
 		
-		<script src="http://maps.google.com/maps/api/js?&libraries=visualization,places"></script>
-		<!-- <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCJX8q3ThLljfIou6UPxhiIDlaSYw6plbs&libraries=places,visualization&callback=initAutocomplete"></script> -->
-		
+		<!-- 
 		<script src="lib/alasql.min.js"></script>
 		<script src="lib/infobubble-compiled.js"></script>
 		<script src="lib/jquery-1.11.3.js"></script>
 		<script src="lib/markerclusterer.js"></script>
 		<script src="lib/markerwithlabel_packed.js"></script>
+		-->
+		<script src="http://ceorg/sites/electricops/ManhElecOps/Eng/Shared Documents/OutageHeatMapData/lib/alasql.min.js"></script>
+		<script src="http://ceorg/sites/electricops/ManhElecOps/Eng/Shared Documents/OutageHeatMapData/lib/infobubble-compiled.js"></script>
+		<script src="http://ceorg/sites/electricops/ManhElecOps/Eng/Shared Documents/OutageHeatMapData/lib/jquery-1.11.3.js"></script>
+		<script src="http://ceorg/sites/electricops/ManhElecOps/Eng/Shared Documents/OutageHeatMapData/lib/markerclusterer.js"></script>
+		<!-- 
+		<script src="http://ceorg/sites/electricops/ManhElecOps/Eng/Shared Documents/OutageHeatMapData/lib/markerwithlabel_packed.js"></script>
+		-->
 		
 	</head>
 
-	<body onload='loadData()'>
+	<body>
 		<div id="floating-panel">
 			<button onclick="toggleHeatmap()">Toggle Heatmap</button>
 			<button onclick="toggleMarkers()">Toggle Markers</button>
@@ -152,9 +155,9 @@
 		<div id="recenter-panel">
 			<fieldset>
 				<legend>Set Map Center</legend>
-				New Location:
+				Address:
 				<div id="locationField">
-					<input id="autocomplete" placeholder="Enter your address" onFocus="geolocate()" type="text" style='color:blue; font-size:90%; width:300px'></input>
+					<input id="autocomplete" placeholder="123 ABC Drive" onFocus="geolocate()" type="text" style='color:blue; font-size:90%; width:300px'></input>
 				</div>
 				
 				<p>
@@ -165,27 +168,25 @@
 		</div>
 		
 		<script>
-			var map, heatmap, numNetworks = 0, maxCustInt = 0, minCustInt = Infinity;
+			var map, heatmap, maxCustInt = 0, minCustInt = Infinity;
 			var recenterLocation;
 			var overallMinCustInt, overallMaxCustInt;
 			var toDateDefault = "", fromDateDefault = "";
-			var networkPolygonCoords = {};
-			var networkPolygons, heatmapCoords, markerCluster, gmarkers = [], markerData, bubbleData;
+			var networkPolygonCoords = {}, networkPolygons = {}, platePolygonCoords = {}, platePolygons = {}, heatmapCoords, markerCluster = {}, gmarkers = [], markerData, bubbleData;
 			
 			// Marker Cluster options
 			var mcOptions = {
-				imagePath: 'markers/cluster',
+				//imagePath: "http://ceorg/sites/electricops/ManhElecOps/Eng/Shared Documents/OutageHeatMapData/markers/cluster",
+				imagePath: "./markers/cluster",
 				gridSize: 100,
 				maxZoom: 15,
 				ignoreHidden: true,
 				minimumClusterSize: 2
 			};
-			var infowindow = new google.maps.InfoWindow({
-				maxWidth: 330
-			});
+			
+			var polygonLabel;			
 			
 			function recenter() {
-				console.log("Recenter picked.");
 				map.setCenter(recenterLocation);
 				map.setZoom(18);
 			}
@@ -247,10 +248,14 @@
 					minCust: document.getElementById("minCustInt").value,
 					maxCust: document.getElementById("maxCustInt").value
 				};
-				initMarkers(filterParams);
+				return initMarkers(filterParams);
 			}
 			
 			function loadData() {
+				polygonLabel = new google.maps.InfoWindow({
+					maxWidth: 33
+				});
+
 				initAutocomplete();
 				var today = new Date();
 				var dd = today.getDate();
@@ -275,28 +280,28 @@
 				};
 				map = new google.maps.Map(document.getElementById('map'), mapOptions);
 				
-				drawBoundaries();
-				initMarkers(undefined);
+				drawPolygons('Plate', "http://ceorg/sites/electricops/ManhElecOps/Eng/Shared Documents/OutageHeatMapData/plates.xml", platePolygons, platePolygonCoords);
+				drawPolygons('Network', "http://ceorg/sites/electricops/ManhElecOps/Eng/Shared Documents/OutageHeatMapData/networks.xml", networkPolygons, networkPolygonCoords);
+				return initMarkers(null);
 			}
 			
-			function drawBoundaries() {
-				console.log("Drawing network boundaries...");
-				networkPolygons = {};
-				markerCluster = {};
-				
-				var kmlPath = "http://localhost:8000/data/networks.xml";
+			function drawPolygons(type, xmlPath, polygons, polyCoords) {
+				console.log("Drawing " + type + " boundaries...");
 				var request = new XMLHttpRequest();
-				request.open("GET", kmlPath, false);
+				//var xmlPath = "http://localhost:8000/data/networks.xml";
+				
+				request.open("GET", xmlPath, false);
+				//request.open("GET", xmlPath, true);
 				request.send();
 				var xml = request.responseXML;
 				var document = xml.documentElement;
 				var placemarks = document.getElementsByTagName("Placemark");
 				for(var i = 0; i < placemarks.length; i++) {
-					var networkCoordinates = [];
+					var polygonCoordinates = [];
 					var placemark = placemarks[i];
 					
 					var names = placemark.getElementsByTagName("name");
-					var networkName = names[0].childNodes[0].nodeValue;
+					var polygonName = names[0].childNodes[0].nodeValue;
 					
 					var coords = placemark.getElementsByTagName("coordinates");
 					var coordsStrs = (coords[0].childNodes[0].nodeValue).split("\n");
@@ -304,26 +309,28 @@
 					for (var j = 0; j < coordsStrs.length; j++) {				
 						var vals = (coordsStrs[j].trim()).split(",");
 						if (vals.length == 2)
-							networkCoordinates.push(new google.maps.LatLng(parseFloat(vals[1]), parseFloat(vals[0])));
+							polygonCoordinates.push(new google.maps.LatLng(parseFloat(vals[1]), parseFloat(vals[0])));
 					}
 					
-					networkPolygons[networkName] = makePolygon(networkCoordinates, networkName);
-					networkPolygonCoords[networkName] = networkCoordinates;
-					markerCluster[networkName] = new MarkerClusterer(map, [], mcOptions);
-					numNetworks++;
+					polygons[polygonName] = makePolygon(polygonCoordinates, polygonName, type);
+					polyCoords[polygonName] = polygonCoordinates;
 				}
+				return;
 			}
 			
 			function initMarkers(filterParams) {
 				heatmapCoords = [];
 				markerData = {};
 				bubbleData = {};
-				//marker cluster option
 				
-				var csvUrl = 'http://localhost:8000/data/pscdata.csv';
+				//var csvUrl = 'http://localhost:8000/data/pscdata.csv';
+				var csvUrl = 'http://ceorg/sites/electricops/ManhElecOps/Eng/Shared Documents/OutageHeatMapData/pscdata.csv';
 				var sqlSelectStr;
-				if (filterParams === undefined) {
+				if (filterParams == null) {
 					console.log("Initial load for all the data for the markers...");
+					for (var networkName in networkPolygons) {
+						markerCluster[networkName] = new MarkerClusterer(map, [], mcOptions);
+					}
 					sqlSelectStr = 'SELECT * FROM CSV("'+csvUrl+'",{headers:true}) ORDER BY CONVERT(date, [Date Time From], 101) ASC';
 				}
 				else {
@@ -351,21 +358,14 @@
 					sqlSelectStr = sqlSelectStr + 'AND CONVERT(date, [Date Time To], 101) <= CONVERT(datetime, "' + filterParams.toDate + '" , 1) ';
 					sqlSelectStr = sqlSelectStr + 'AND [No Cust Interrupts] >= ' + filterParams.minCust + ' AND [No Cust Interrupts] <= ' + filterParams.maxCust + ')';
 					sqlSelectStr = sqlSelectStr + 'ORDER BY CONVERT(date, [Date Time From], 101) ASC';
-					
-					//console.log("Sql String:");
-					//console.log(sqlSelectStr);
-					//" ORDER BY CONVERT(date, [Date Time From], 101) ASC'
-					//alasql('SELECT * FROM CSV("'+csvUrl+'",{headers:true}) WHERE CONVERT(date, [Date Time From], 101)>=CONVERT(datetime, "07-07-2015", 1) ORDER BY CONVERT(date, [Date Time From], 101) ASC', [], function(data){
-					//alasql('SELECT * FROM CSV("'+csvUrl+'",{headers:true}) WHERE [No Cust Interrupts]>10', [], function(data){
-					
 				}
 				
-				alasql(sqlSelectStr, [], function(data){
+				alasql(sqlSelectStr, [], function(data) {
 					console.log("pscdata.csv shows " + data.length + " outage reports.");
 					headers = ['ID','Address','Latitude','Longitude','Date Time From','Date Time To','Fault Location',
 									'Partial','Root Cause','Sub Cause','Ticket No','Weather','Customer Hrs','Duration','No Cust Interrupts'];
 					
-					if (filterParams === undefined) {
+					if (filterParams == null) {
 						var minDate = new Date(data[0]['Date Time From']);
 						var dd = minDate.getDate();
 						var mm = minDate.getMonth()+1;
@@ -381,7 +381,6 @@
 						document.getElementById("toDate").setAttribute("min", minDate);
 						document.getElementById("fromDate").setAttribute("value", minDate);
 						fromDateDefault = minDate;
-						
 						var maxDate = new Date(data[data.length-1]['Date Time From']);
 						dd = maxDate.getDate();
 						mm = maxDate.getMonth()+1;
@@ -408,36 +407,12 @@
 							heatmapCoords.push(new google.maps.LatLng(data[i]['Latitude'], data[i]['Longitude']));
 							var infoBubble;
 							
-							
 							// If the address is already in the markerData map, then append on values
 							if (dataAddress in markerData) {
 								var numEntries = markerData[dataAddress]['Num Entries'];
 								infoBubble = bubbleData[dataAddress];
-								/*
-								for (var j = 0; j < headers.length; j++) {
-									var headerName = headers[j];
-									if (headerName != 'Address' && headerName != 'Latitude' && headerName != 'Longitude' && headerName != 'ID') {
-										var strLength = Number(('' + markerData[dataAddress][headerName] + '').length + headerName.length);
-										var numExtra = parseFloat(numEntries)-1;
-										var extraLength = Number(numExtra*32);
-										var expectedLength = extraLength + 45;
-										var padAmount = expectedLength - strLength;
-										for (var p = 0; p < padAmount; p++) {
-											markerData[dataAddress][headerName] += ",";
-										}
-									}
-								}
-								*/
 								numEntries++;
 								markerData[dataAddress]['Num Entries'] = numEntries;
-								/*
-								for (var j = 0; j < headers.length; j++) {
-									var headerName = headers[j];
-									if (headerName != 'Address' && headerName != 'Latitude' && headerName != 'Longitude' && headerName != 'ID') {
-										markerData[dataAddress][headerName] += '' + data[i][headerName];
-									}
-								}
-								*/
 							}	
 							else {
 								markerData[dataAddress] = {};
@@ -445,7 +420,8 @@
 									minWidth: 200,
 									maxWidth: 250,
 									minHeight: 190,
-									maxHeight: 190
+									maxHeight: 190,
+									shadowStyle: 0
 								});
 								bubbleData[dataAddress] = infoBubble;
 								markerData[dataAddress]['Num Entries'] = 1;
@@ -454,11 +430,9 @@
 									var headerName = headers[j];
 									markerData[dataAddress][headerName] = data[i][headerName];
 								}
-								
-
 							}
 							
-							var contentStr = "<h2>" + data[i]['Address'] + "</h2>";
+							var contentStr = "<h2>" + data[i]['Address'] + "</h2><div id='infoBubble'>";
 							// Add the infobubble data as html string content
 							for (var j = 0; j < headers.length; j++) {
 								var headerName = headers[j];
@@ -467,6 +441,7 @@
 									contentStr += "<b>" + headerName + "</b>: " + headerValue + "<br>"
 								}
 							}
+							contentStr += "</div>"
 							infoBubble.addTab(markerData[dataAddress]['Num Entries'], contentStr);
 							
 							
@@ -480,12 +455,13 @@
 					document.getElementById("minCustInt").value = minCustInt;
 					document.getElementById("maxCustInt").value = maxCustInt;
 					
-					if (filterParams == undefined) {
+					if (filterParams == null) {
 						overallMaxCustInt = maxCustInt;
 						overallMinCustInt = minCustInt;
 					}
 					
 					initMap();
+					return;
 				});
 			}
 			
@@ -493,13 +469,12 @@
 				console.log("move to network called by network " + networkName)
 				var bounds = new google.maps.LatLngBounds();
 				var networkBounds = networkPolygonCoords[networkName];
-				
 				for (i = 0; i < networkBounds.length; i++) {
 					bounds.extend(networkBounds[i]);
 				}
-				
 				map.setCenter(bounds.getCenter());
 				map.setZoom(14);
+				delete bounds;
 				return false;
 			}
 			
@@ -518,7 +493,7 @@
 				for (dataIter in markerData) {
 					if (markerData.hasOwnProperty(dataIter)) {
 						var newMarker = createMarker(dataIter);
-						if (newMarker != undefined) {
+						if (newMarker != null) {
 							gmarkers.push(newMarker);
 							count++;
 						}
@@ -532,7 +507,9 @@
 					}
 				}
 				document.getElementById('networks-panel').innerHTML += '</p>';
+				document.getElementById('networks-panel').style.height = '100%';
 				console.log("Map initialized. " + count + " markers on the map.");
+				return;
 			}
 			
 			function createMarker(index) {
@@ -547,27 +524,12 @@
 				var marker = new google.maps.Marker({
 					position: latlng,
 					map: map,
-					icon: "http://localhost:8000/markers/" + number + ".png",
+					icon: "http://ceorg/sites/electricops/ManhElecOps/Eng/Shared Documents/OutageHeatMapData/markers/" + number + ".png",
 					title: markerData[index]['Address']
 				});
 				
 				
 				var infoBubble = bubbleData[index];
-				/*
-				// Old event listener to swap out text for the infowindow
-				google.maps.event.addListener(marker, 'click', function() {
-					infowindow.close();
-					console.log("click listener's index = " + index);
-					var text = "<b>" + markerData[index]['Address'] + " - (" +  markerData[index]['Num Entries'] + ")</b><pre>";
-					for (var headerIter = 4; headerIter < headers.length; headerIter++) {
-						var headerName = headers[headerIter];
-						text +=  "<b>" + headerName + "</b>: " + ('' + markerData[index][headerName] + '').replace(/,/g, '&nbsp;') + "<br>";
-					}
-					text += "</pre>";
-					infowindow.setContent(text);
-					infowindow.open(map,marker);
-				});
-				*/
 				// New event listener that displays the tabbed infobubble
 				google.maps.event.addListener(marker, 'click', function() {
 					if (!infoBubble.isOpen()) {
@@ -589,7 +551,7 @@
 				
 				if (found == false) {
 					console.log("Err: Marker data for " + markerData[index]['Address'] + " could not be matched to a network! (" + markerData[index]['Latitude'] + ", " + markerData[index]['Latitude'] + ")");
-					return undefined;
+					return null;
 				}
 				else {
 					return marker;
@@ -642,56 +604,74 @@
 				heatmap.set('opacity', newOpacity);
 			}
 			
-			function makePolygon(polyCoords, polyLabel) {
-				var marker = new MarkerWithLabel({
-					position: new google.maps.LatLng(0, 0),
-					draggable: false,
-					raiseOnDrag: false,
-					map: map,
-					labelContent: polyLabel,
-					labelAnchor: new google.maps.Point(15, 23),
-					labelClass: "labels", // the CSS class for the label
-					labelStyle: {
-					  opacity: 1.0
-					},
-					icon: "http://placehold.it/1x1",
-					visible: false
-				 });
-				
-				var smpColors = [
-					"#0000ff",
-					"#ff0000",
-					"#00ff00",
-					"#00ffff",
-					"#ffff00",
-					"#ff00ff",
-					"#cc00cc",
-					"#cccc00",
-					"#00cccc"
-				];
+			function makePolygon(polyCoords, polyLabel, type) {
+				var smpColors;
+				if (type == 'Network') {
+					smpColors = [
+						"#0000ff",
+						"#ff0000",
+						"#00ff00",
+						"#00ffff",
+						"#ffff00",
+						"#ff00ff",
+						"#cc00cc",
+						"#cccc00",
+						"#00cccc"
+					];
+				}
+				else if (type == 'Plate') {
+					smpColors = [
+						"#66ff00"
+					];
+				}
 				var randColor = smpColors[Math.floor(Math.random()*smpColors.length)];
+				
+				var myOpacity, myZIndex, myStrokeWeight;
+				if (type == 'Plate') {
+					myOpacity = 0.05;
+					myZIndex = 1;
+					myStrokeWeight = 0;
+				}
+				else if (type == 'Network') {
+					myOpacity = 0.15;
+					myZIndex = 2;
+					myStrokeWeight = 1;
+				}
+				
 				var poly = new google.maps.Polygon({
 					paths: polyCoords,
 					draggable: false,
 					clickable: true,
 					strokeColor: "#333333",
 					strokeOpacity: 0.5,
-					strokeWeight: 1,
+					strokeWeight: myStrokeWeight,
 					fillColor: randColor,
-					fillOpacity: 0.15,
+					fillOpacity: myOpacity,
+					zIndex: myZIndex,
 					map: map
 				});
-
-				google.maps.event.addListener(poly, "mousemove", function(event) {
-					marker.setPosition(event.latLng);
-					marker.setVisible(true);
-				});
+				
+				if (type == 'Network') {
+					google.maps.event.addListener(poly, "click", function(event) {
+						polygonLabel.close();
+						this.setVisible(false);
+						setTimeout(function(){
+							poly.setVisible(true);
+						}, 2000);
+					});
+				}
 				google.maps.event.addListener(poly, "mouseout", function(event) {
-					marker.setVisible(false);
+					polygonLabel.close();
+				});
+				google.maps.event.addListener(poly, "mousemove", function(event) {
+					polygonLabel.setPosition(event.latLng);
+					polygonLabel.setContent("<b>" + polyLabel + "</b>");
+					polygonLabel.open(map);
 				});
 				
 				return poly;
 			}
 		</script>
+		<script src="http://maps.google.com/maps/api/js?&libraries=visualization,places&callback=loadData" async defer></script
 	</body>
 </html>
