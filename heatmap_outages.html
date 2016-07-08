@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 	<head>
+		<meta http-equiv="X-UA-Compatible", content="IE=edge,chrome=1">
 		<meta charset="utf-8" />
 		<title>Historical PSC Outmage Map</title>
 		<style>
@@ -41,69 +42,49 @@
 				line-height: 30px;
 				padding-left: 10px;
 			}
-			#query-panel {
+			#options-panel {
 				font-family: monospace;
 				position: absolute;
 				border: none;
 				left: 0%;
 				top: 80%;
-				height: 20%;
-				background-image: none;
+				width: 80%;
+				overflow: hidden;
+			}
+			#query-panel {
+				font-family: monospace;
+				float: left;
 			}
 			#recenter-panel {
 				font-family: monospace;
-				position: absolute;
-				border: none;
-				left: 38%;
-				top: 80%;
-				height: 20%;
-				background-image: none;
+				float: left;
+				overflow: hidden;
+			}
+			#platenavi-panel {
+				font-family: monospace;
+				float: left;
+				overflow: hidden;
 			}
 			#date-panel {
 				font-family: monospace;
 				display: inline-block;
 				padding: 5px;
-				position: relative;
 				border: none;
 				top: 80%;
-				background-image: none;
-				background-color: rgb(255, 240, 240);
 			}
 			#customers-panel {
 				font-family: monospace;
 				display: inline-block;
 				padding: 5px;
-				position: relative;
 				border: none;
 				top: 80%;
-				background-image: none;
-				background-color: rgb(255, 240, 240);
-			}
-			.infoBubble {
-				color: #fff;
-				font-family: Helvetica Neue, Helvetica, arial;
-				font-size: 16px;
-				line-height: 25px;
-				padding: 4px 45px 4px 15px;
-				font-weight: bold;
 			}
 		</style>
 		
-		<!-- 
 		<script src="lib/alasql.min.js"></script>
 		<script src="lib/infobubble-compiled.js"></script>
 		<script src="lib/jquery-1.11.3.js"></script>
 		<script src="lib/markerclusterer.js"></script>
-		<script src="lib/markerwithlabel_packed.js"></script>
-		-->
-		<script src="http://ceorg/sites/electricops/ManhElecOps/Eng/Shared Documents/OutageHeatMapData/lib/alasql.min.js"></script>
-		<script src="http://ceorg/sites/electricops/ManhElecOps/Eng/Shared Documents/OutageHeatMapData/lib/infobubble-compiled.js"></script>
-		<script src="http://ceorg/sites/electricops/ManhElecOps/Eng/Shared Documents/OutageHeatMapData/lib/jquery-1.11.3.js"></script>
-		<script src="http://ceorg/sites/electricops/ManhElecOps/Eng/Shared Documents/OutageHeatMapData/lib/markerclusterer.js"></script>
-		<!-- 
-		<script src="http://ceorg/sites/electricops/ManhElecOps/Eng/Shared Documents/OutageHeatMapData/lib/markerwithlabel_packed.js"></script>
-		-->
-		
 	</head>
 
 	<body>
@@ -118,55 +99,67 @@
 		<div id="networks-panel">
 			<b>Building Outages Per Network</b>
 		</div>
-		
-		<div id="query-panel">
-			<fieldset>
-				<legend>Filter Outages</legend>
+		<div id="options-panel">
+			<div id="query-panel">
+				<fieldset>
+					<legend>Filter Outages</legend>
+					
+					<div id="date-panel">
+						<fieldset>
+						<legend>Time Interval</legend>
+						From: &nbsp
+						<input type="date" id="fromDate" name="fromDate" size="10" maxlength="10"/> <br>
+						To: &nbsp&nbsp&nbsp
+						<input type="date" id="toDate" name="toDate" size="10" maxlength="10"/>
+						</fieldset>
+					</div>
+					
+					<div id="customers-panel">
+						<fieldset>
+						<legend>No. Cust. Interrupts</legend>
+						From: &nbsp
+						<input type="number" id="minCustInt" value="0" name="minCustInt" min="0" max="99999" style="width: 75px;"/> <br>
+						To: &nbsp&nbsp&nbsp
+						<input type="number" id="maxCustInt" value="99999" name="maxCustInt" min="0" max="99999" style="width: 75px;"/> <br>
+						</fieldset>
+					</div>
+					
+					<p>
+						&nbsp
+						<button onclick="filter()">Filter</button>
+						<button onclick="reset()">Reset</button>
+					</p>
+				</fieldset>
 				
-				<div id="date-panel">
-					<fieldset>
-					<legend>Time Interval</legend>
-					From: &nbsp
-					<input type="date" id="fromDate" name="fromDate" size="10" maxlength="10"/> <br>
-					To: &nbsp&nbsp&nbsp
-					<input type="date" id="toDate" name="toDate" size="10" maxlength="10"/>
-					</fieldset>
-				</div>
+			</div>
 				
-				<div id="customers-panel">
-					<fieldset>
-					<legend>No. Cust. Interrupts</legend>
-					From: &nbsp
-					<input type="number" id="minCustInt" value="0" name="minCustInt" min="0" max="99999" style="width: 75px;"/> <br>
-					To: &nbsp&nbsp&nbsp
-					<input type="number" id="maxCustInt" value="99999" name="maxCustInt" min="0" max="99999" style="width: 75px;"/> <br>
-					</fieldset>
-				</div>
-				
-				<p>
-					&nbsp
-					<button onclick="filter()">Filter</button>
-					<button onclick="reset()">Reset</button>
-				</p>
-			</fieldset>
+			<div id="recenter-panel">
+				<fieldset>
+					<legend>Set Map Center</legend>
+					Address:
+					<div id="locationField">
+						<!-- <input id="autocomplete" type="text" placeholder="123 ABC Drive" onFocus="geolocate()" style='color:blue; font-size:90%; width:300px'></input> -->
+						<input id="autocomplete" type="text" placeholder="123 ABC Drive" style='color:blue; font-size:90%; width:300px'></input>
+					</div>
+					
+					<p>
+						&nbsp
+						<button onclick="recenter()">Recenter</button>
+					</p>
+				</fieldset>
+			</div>
 			
+			<div id="platenavi-panel">
+				<fieldset>
+					<legend>Open Plate</legend>
+					Plate: <br>
+					<input id="plateSelection" type="text" placeholder="1-J" style='color:blue; font-size:90%; width: 50px'></input>
+					<p>
+					<button onclick="openPlate()">Open</button>
+					<div id="plateError"></div>
+				</fieldset>
+			</div>
 		</div>
-			
-		<div id="recenter-panel">
-			<fieldset>
-				<legend>Set Map Center</legend>
-				Address:
-				<div id="locationField">
-					<input id="autocomplete" placeholder="123 ABC Drive" onFocus="geolocate()" type="text" style='color:blue; font-size:90%; width:300px'></input>
-				</div>
-				
-				<p>
-					&nbsp
-					<button onclick="recenter()">Recenter</button>
-				</p>
-			</fieldset>
-		</div>
-		
 		<script>
 			var map, heatmap, maxCustInt = 0, minCustInt = Infinity;
 			var recenterLocation;
@@ -174,9 +167,16 @@
 			var toDateDefault = "", fromDateDefault = "";
 			var networkPolygonCoords = {}, networkPolygons = {}, platePolygonCoords = {}, platePolygons = {}, heatmapCoords, markerCluster = {}, gmarkers = [], markerData, bubbleData;
 			
+			function isNumeric(n) {
+				return !isNaN(parseFloat(n)) && isFinite(n);
+			}
+			
+			function isLetter(s) {
+				return s.length === 1 && s.match(/[a-z]/i);
+			}
+			
 			// Marker Cluster options
 			var mcOptions = {
-				//imagePath: "http://ceorg/sites/electricops/ManhElecOps/Eng/Shared Documents/OutageHeatMapData/markers/cluster",
 				imagePath: "./markers/cluster",
 				gridSize: 100,
 				maxZoom: 15,
@@ -189,6 +189,31 @@
 			function recenter() {
 				map.setCenter(recenterLocation);
 				map.setZoom(18);
+			}
+			
+			function openPlate() {
+				var plate = document.getElementById("plateSelection").value;
+				//document.getElementById("plateError").innerHTML = "";
+				
+				if (plate.substring(0, 1) == "0") {
+					plate = plate.substring(1);
+				}
+				if (!isLetter(plate.substring(plate.length-1))) {
+					//document.getElementById("plateError").innerHTML = "Last part is not a letter";
+					return;
+				}
+				if (!isNumeric(plate.substring(0, plate.length-1))) {
+					//document.getElementById("plateError").innerHTML = "First part is not numeric";
+					return;
+				}
+				
+				if (plate.search("-") == -1) {
+					plate = plate.substring(0, plate.length-1) + "-" + plate.substring(plate.length-1);
+				}
+				console.log("Plate: " + plate);
+				var url = "http://maps/pdf/Manhattan/E_M_and_S/" + plate + ".pdf"
+				var win = window.open(url, '_blank');
+				win.focus();
 			}
 			
 			function initAutocomplete() {
@@ -211,6 +236,7 @@
 				recenterLocation = place.geometry.location;
             }
 			
+			/*
 			function geolocate() {
                 if (navigator.geolocation) {
                     navigator.geolocation.getCurrentPosition(function(position) {
@@ -226,6 +252,7 @@
                     });
                 }
             }
+			*/
 			
 			function reset() {
 				document.getElementById("fromDate").value = fromDateDefault;
@@ -280,18 +307,18 @@
 				};
 				map = new google.maps.Map(document.getElementById('map'), mapOptions);
 				
-				drawPolygons('Plate', "http://ceorg/sites/electricops/ManhElecOps/Eng/Shared Documents/OutageHeatMapData/plates.xml", platePolygons, platePolygonCoords);
-				drawPolygons('Network', "http://ceorg/sites/electricops/ManhElecOps/Eng/Shared Documents/OutageHeatMapData/networks.xml", networkPolygons, networkPolygonCoords);
+				drawPolygons('Plate', "http://localhost:8000/data/plates.xml", platePolygons, platePolygonCoords);
+				drawPolygons('Network', "http://localhost:8000/data/networks.xml", networkPolygons, networkPolygonCoords);
+				//drawPolygons('Plate', "./data/plates.xml", platePolygons, platePolygonCoords);
+				//drawPolygons('Network', "./data/networks.xml", networkPolygons, networkPolygonCoords);
 				return initMarkers(null);
 			}
 			
 			function drawPolygons(type, xmlPath, polygons, polyCoords) {
 				console.log("Drawing " + type + " boundaries...");
 				var request = new XMLHttpRequest();
-				//var xmlPath = "http://localhost:8000/data/networks.xml";
 				
 				request.open("GET", xmlPath, false);
-				//request.open("GET", xmlPath, true);
 				request.send();
 				var xml = request.responseXML;
 				var document = xml.documentElement;
@@ -323,8 +350,7 @@
 				markerData = {};
 				bubbleData = {};
 				
-				//var csvUrl = 'http://localhost:8000/data/pscdata.csv';
-				var csvUrl = 'http://ceorg/sites/electricops/ManhElecOps/Eng/Shared Documents/OutageHeatMapData/pscdata.csv';
+				var csvUrl = 'http://localhost:8000/data/pscdata.csv';
 				var sqlSelectStr;
 				if (filterParams == null) {
 					console.log("Initial load for all the data for the markers...");
@@ -500,7 +526,7 @@
 					}
 				}
 				
-				document.getElementById('networks-panel').innerHTML = '<b>Building Outages Per Network</b><p>';
+				document.getElementById('networks-panel').innerHTML = '<b>Building Outages Per Network</b><br>';
 				for (var key in markerCluster) {
 					if (markerCluster.hasOwnProperty(key)) {
 						document.getElementById('networks-panel').innerHTML += '<b><a id="' + key + '" href="javascript:void(0);" onclick=\"moveToNetwork(\'' + key + '\'); return false;\">' + key + '</a></b>: ' + markerCluster[key].getTotalMarkers() + '<br>';
@@ -524,7 +550,8 @@
 				var marker = new google.maps.Marker({
 					position: latlng,
 					map: map,
-					icon: "http://ceorg/sites/electricops/ManhElecOps/Eng/Shared Documents/OutageHeatMapData/markers/" + number + ".png",
+					//icon: "http://localhost:8000/markers/" + number + ".png",
+					icon: "./markers/" + number + ".png",
 					title: markerData[index]['Address']
 				});
 				
